@@ -103,6 +103,28 @@ def run_cmd(
     typer.echo(json.dumps({"run_id": ctx.run_id, "stages": names}))
 
 
+@app.command("demo")
+def demo_cmd(
+    user_id: int = typer.Option(None, "--user-id"),
+    tags: str = typer.Option(None, "--tags", help="cold-start: comma-separated tags, e.g. 'RPG,Indie'"),
+    model: str = typer.Option("als", "--model", help="als | cb | popularity"),
+    k: int = typer.Option(10, "-k"),
+    run_id: str = typer.Option(None, "--run-id"),
+    env: str = EnvOpt,
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Offline recommendations from precomputed artifacts (works with Colab off)."""
+    from steam_rec.serving.demo import Demo, pretty
+    from steam_rec.storage.store import get_store
+
+    cfg = load_config(env)
+    d = Demo(cfg, get_store(cfg), run_id, k)
+    if user_id is None and not tags:
+        raise typer.BadParameter("give --user-id or --tags")
+    res = d.for_user(user_id, model) if user_id is not None else d.for_new_user(tags.split(","))
+    typer.echo(json.dumps(res, default=str, ensure_ascii=False, indent=2) if as_json else pretty(res))
+
+
 @app.command("show-config")
 def show_config(env: str = EnvOpt, scale: str = ScaleOpt) -> None:
     cfg = load_config(env, scale)

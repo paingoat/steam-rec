@@ -1,0 +1,7 @@
+# Only what Colab lacks; numpy/pandas/pyarrow/scipy/matplotlib/pyspark(4.0.5) come preinstalled and are NOT
+# reinstalled (doing so breaks the running kernel). Actual versions are logged by scripts/colab/bootstrap.py.
+kagglehub>=0.3
+typer>=0.15
+pydantic>=2.9
+pyyaml>=6.0
+boto3>=1.40

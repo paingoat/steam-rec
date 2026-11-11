@@ -1,2 +1,7 @@
 scale: {name: full, max_recommendations: null}
 spark: {shuffle_partitions: 128}
+eval: {max_eval_users: 100000}
+# Grid narrowed from dev results (rank 64 / alpha 10 best on validation; alpha 40 worse) -> 4 ALS fits.
+model:
+  als: {grid: {rank: [64, 128], regParam: [0.1], alpha: [5.0, 10.0], maxIter: [10]}}
+  cb: {grid: {w_desc: [0.3, 1.0]}}

@@ -14,8 +14,9 @@ def get_spark(cfg: Config, app_name: str = "steam-rec"):
     os.environ.setdefault("PYSPARK_PYTHON", os.sys.executable)
     b = (
         SparkSession.builder.master(sc.master).appName(app_name)
-        .config("spark.driver.memory", sc.driver_memory)
-        .config("spark.sql.shuffle.partitions", str(sc.shuffle_partitions))
+        .config("spark.driver.memory", os.environ.get("STEAM_REC_DRIVER_MEMORY", sc.driver_memory))
+        .config("spark.sql.shuffle.partitions", os.environ.get("STEAM_REC_SHUFFLE_PARTITIONS",
+                                                               str(sc.shuffle_partitions)))
         .config("spark.local.dir", str(local_dir))
         .config("spark.sql.session.timeZone", "UTC")
         .config("spark.sql.adaptive.enabled", "true")
