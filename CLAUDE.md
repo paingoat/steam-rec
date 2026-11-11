@@ -46,3 +46,10 @@ dữ liệu cuối cùng, cấu hình và demo; Google Colab chỉ là compute t
    `colab sessions`. Ưu tiên `colab run` (tự teardown) cho job một lần.
 9. **Báo cáo trung thực.** Nếu lệnh lỗi, timeout hoặc session bị prune thì báo đúng như vậy, kèm `colab log -s NAME -n 20`.
    Không suy đoán là job đã thành công.
+10. **Kinh nghiệm từ run full 2026-11-11:**
+    - Từ Bash tool, `colab exec` **phải có `< /dev/null`**. Nếu không, client chờ stdin và treo vô hạn, job không bao giờ
+      đến kernel.
+    - Sau `colab restart-kernel`, hoặc khi session Claude Code kết thúc, phải dừng mọi client `colab exec` cũ ở local
+      (TaskStop hoặc `kill <PID>`, **không dùng `pkill -f`** vì nó kill luôn shell hiện tại). Client mồ côi có thể ghi đè log.
+    - ALS full (17M tương tác, 3.3M user) trên VM 8 nhân mất khoảng 22 phút mỗi lần fit, kể cả ở rank 32.
+      Mỗi lần `exec` chỉ fit một cấu hình (`STEAM_REC_MAX_ALS_FITS=1`, stage train resume được).
