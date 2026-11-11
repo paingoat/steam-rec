@@ -125,6 +125,35 @@ def demo_cmd(
     typer.echo(json.dumps(res, default=str, ensure_ascii=False, indent=2) if as_json else pretty(res))
 
 
+@app.command("import")
+def import_cmd(bundle_dir: str = typer.Option(..., "--bundle-dir"), env: str = EnvOpt) -> None:
+    """Verify a Colab bundle (SHA-256) and import it into the lake (SILO)."""
+    from pathlib import Path
+
+    from steam_rec.storage.importer import import_bundle
+    from steam_rec.storage.store import get_store
+
+    cfg = load_config(env)
+    typer.echo(json.dumps(import_bundle(Path(bundle_dir), get_store(cfg))))
+
+
+RunIdsArg = typer.Argument(None, help="run ids (default: all evaluated runs)")
+
+
+@app.command("report")
+def report_cmd(run_ids: list[str] = RunIdsArg, env: str = EnvOpt,
+               out: str = typer.Option("reports/benchmark.md", "--out")) -> None:
+    """Write the benchmark report for the given run ids (default: all runs with an evaluate stage)."""
+    from steam_rec.common.config import REPO_ROOT
+    from steam_rec.evaluation.report import render, run_summary
+    from steam_rec.storage.store import get_store
+
+    store = get_store(load_config(env))
+    ids = run_ids or sorted({k.split("/")[1] for k in store.list("artifacts/") if k.endswith("stages/evaluate.json")})
+    (REPO_ROOT / out).write_text(render([run_summary(store, r) for r in ids]))
+    typer.echo(f"wrote {out} for {len(ids)} runs")
+
+
 @app.command("show-config")
 def show_config(env: str = EnvOpt, scale: str = ScaleOpt) -> None:
     cfg = load_config(env, scale)

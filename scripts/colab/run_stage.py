@@ -51,7 +51,7 @@ def restore(rid):
 def checkpoint(rid):
     for sub in ("silver", "gold", f"artifacts/{rid}"):
         for p in (LAKE / sub).rglob(f"run={rid}") if sub in ("silver", "gold") else [LAKE / sub]:
-            mirror(p, drive_run(rid) / "lake" / p.relative_to(LAKE))
+            mirror(p, drive_run(rid) / "lake" / p.relative_to(LAKE), delete=sub.startswith("artifacts/"))
 
 
 from steam_rec.cli import _ctx, _stage_fn
@@ -94,6 +94,9 @@ for stage in STAGES:
                           "tar_mb": round(man["tar_size"] / 1e6, 1)}))
         continue
     ctx = _ctx("colab", SCALE, RUN_ID)
-    run_stage(ctx, stage, _stage_fn(stage))
+    res = run_stage(ctx, stage, _stage_fn(stage))
     checkpoint(RUN_ID)
-    print(json.dumps({"stage": stage, "run_id": RUN_ID, "status": "done"}))
+    status = "incomplete" if "incomplete" in res else "done"
+    print(json.dumps({"stage": stage, "run_id": RUN_ID, "status": status, "detail": res.get("incomplete")}))
+    if status != "done":
+        break  # later stages depend on this one

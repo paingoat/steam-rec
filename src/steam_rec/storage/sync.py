@@ -9,13 +9,14 @@ from pathlib import Path
 from steam_rec.common.logging import LOG
 
 
-def mirror(src: Path, dst: Path) -> None:
+def mirror(src: Path, dst: Path, delete: bool = False) -> None:
+    """delete=True makes dst an exact mirror (only use on directories this run owns)."""
     src, dst = Path(src), Path(dst)
     if not src.exists():
         return
     dst.mkdir(parents=True, exist_ok=True)
     if shutil.which("rsync"):
-        subprocess.run(["rsync", "-a", f"{src}/", f"{dst}/"], check=True)
+        subprocess.run(["rsync", "-a", *(["--delete"] if delete else []), f"{src}/", f"{dst}/"], check=True)
     else:
         for p in src.rglob("*"):
             if p.is_file():

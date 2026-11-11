@@ -36,3 +36,14 @@ def test_local_store(tmp_path):
     assert s.exists("x/y/_SUCCESS") and s.exists("x/y")
     assert s.list("x") == ["x/y/_SUCCESS"]
     assert s.uri("x").startswith("file://")
+
+
+def test_import_bundle_into_store(tmp_path):
+    from steam_rec.storage.importer import import_bundle
+
+    src = _mk(tmp_path)
+    make_bundle(src, tmp_path / "out", "r1", chunk_mb=1, meta={"run_id": "r1"})
+    store = LocalStore(tmp_path / "lake")
+    res = import_bundle(tmp_path / "out", store)
+    assert res["files"] == 2
+    assert store.exists("artifacts/r1/a.bin") and store.exists("artifacts/r1/_IMPORTED.json")

@@ -56,6 +56,9 @@ class LocalStore:
         local.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(self._p(key), local)
 
+    def delete_prefix(self, prefix: str) -> None:
+        shutil.rmtree(self._p(prefix), ignore_errors=True)
+
     def put_text(self, key: str, text: str) -> None:
         dst = self._p(key)
         dst.parent.mkdir(parents=True, exist_ok=True)
@@ -113,6 +116,12 @@ class S3Store:
     def get_file(self, key: str, local: Path) -> None:
         local.parent.mkdir(parents=True, exist_ok=True)
         self.client.download_file(self.bucket, key, str(local))
+
+    def delete_prefix(self, prefix: str) -> None:
+        keys = self.list(prefix.rstrip("/") + "/")
+        for i in range(0, len(keys), 1000):
+            self.client.delete_objects(Bucket=self.bucket,
+                                       Delete={"Objects": [{"Key": k} for k in keys[i:i + 1000]]})
 
     def put_text(self, key: str, text: str) -> None:
         self.client.put_object(Bucket=self.bucket, Key=key, Body=text.encode())

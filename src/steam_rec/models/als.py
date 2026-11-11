@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 import numpy as np
 from pyspark.ml.recommendation import ALS, ALSModel
 from pyspark.sql import DataFrame
@@ -11,11 +13,13 @@ from steam_rec.pipelines.runner import Ctx
 def fit_als(ctx: Ctx, params: dict) -> ALSModel:
     """Implicit ALS on train positives. rating = confidence (1+log1p(hours)); Spark uses c = 1 + alpha*rating."""
     train = ctx.read(ctx.gold("interactions")).filter("split = 'train'").select("user_idx", "item_idx", "confidence")
+    # ~2 blocks per core: 128 blocks on an 8-core VM made each fit >25 min (shuffle overhead)
+    blocks = int(os.environ.get("STEAM_REC_ALS_BLOCKS", 2 * (os.cpu_count() or 4)))
     als = ALS(userCol="user_idx", itemCol="item_idx", ratingCol="confidence", implicitPrefs=True,
               rank=int(params["rank"]), regParam=float(params["regParam"]), alpha=float(params["alpha"]),
               maxIter=int(params["maxIter"]), coldStartStrategy="drop", nonnegative=False,
               checkpointInterval=5, seed=ctx.cfg.scale.sample_seed,
-              numUserBlocks=ctx.cfg.spark.shuffle_partitions, numItemBlocks=ctx.cfg.spark.shuffle_partitions)
+              numUserBlocks=blocks, numItemBlocks=blocks)
     return als.fit(train)
 
 

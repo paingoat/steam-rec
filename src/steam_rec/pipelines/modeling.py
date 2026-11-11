@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import itertools
 import json
+import os
 
 from pyspark.ml.recommendation import ALSModel
 from pyspark.sql import functions as F
@@ -14,7 +15,7 @@ from steam_rec.models import als as als_m
 from steam_rec.models import cb_tfidf
 from steam_rec.models.popularity import fit_popularity
 from steam_rec.models.scoring import topk, user_inputs
-from steam_rec.pipelines.runner import Ctx
+from steam_rec.pipelines.runner import Ctx, StageIncomplete
 from steam_rec.storage.arrays import get_npy, get_npz, put_npy, put_npz
 
 PRIMARY = "ndcg@{k}"
@@ -40,53 +41,78 @@ def _grid(g: dict) -> list[dict]:
     return [dict(zip(keys, vals, strict=True)) for vals in itertools.product(*[g[k] for k in keys])]
 
 
+def _trial_key(params: dict) -> str:
+    return "_".join(f"{k}{params[k]:g}" if isinstance(params[k], float) else f"{k}{params[k]}" for k in sorted(params))
+
+
 def run_train(ctx: Ctx) -> dict:
+    """Resumable: every sub-result is persisted under models/trials/ as soon as it exists, so a timeout or VM reset
+    only re-runs what is missing. STEAM_REC_MAX_ALS_FITS caps new ALS fits per invocation (keeps each
+    `colab exec` well under its timeout); the stage is only marked done once every grid point is evaluated."""
     n_items, k = _n_items(ctx), _kmax(ctx)
     primary = PRIMARY.format(k=k)
+    trial = lambda name: ctx.art("models", "trials", f"{name}.json")
+    have = lambda name: ctx.store.exists(trial(name))
     targets = ctx.read(ctx.gold("eval_targets"))
     inp = user_inputs(ctx, targets, "val").checkpoint(eager=True)
-    results: dict = {"popularity": [], "cb": [], "als": []}
 
-    with phase("train.popularity"):
-        pop = fit_popularity(ctx, n_items)
-        put_npy(ctx.store, ctx.art("models", "popularity.npy"), pop)
-        results["popularity"].append({"params": {}, "val": _eval(ctx, inp, "pop", pop, "val_item", n_items)})
+    if not have("popularity"):
+        with phase("train.popularity"):
+            pop = fit_popularity(ctx, n_items)
+            put_npy(ctx.store, ctx.art("models", "popularity.npy"), pop)
+            ctx.put_json(trial("popularity"), [{"params": {}, "val": _eval(ctx, inp, "pop", pop, "val_item", n_items)}])
 
-    with phase("train.cb"):
-        cbp = ctx.cfg.model["cb"]
-        feats = cb_tfidf.build_item_features(ctx, n_items)
-        best = None
-        for params in _grid(cbp.get("grid", {"w_desc": [cbp["w_desc"]]})):
-            w_desc = float(params.get("w_desc", cbp["w_desc"]))
-            s = cb_tfidf.item_knn(cb_tfidf.combine(feats["X_tag"], feats["X_desc"], float(cbp["w_tag"]), w_desc),
-                                  int(cbp["neighbors"]))
-            met = _eval(ctx, inp, "cb", s, "val_item", n_items)
-            results["cb"].append({"params": {"w_desc": w_desc}, "val": met})
-            LOG.info("cb w_desc=%s %s", w_desc, met)
-            if best is None or met[primary] > best[0]:
-                best = (met[primary], s, w_desc)
-        put_npz(ctx.store, ctx.art("models", "cb_item_knn.npz"), best[1])
-        put_npz(ctx.store, ctx.art("models", "cb_x_tag.npz"), feats["X_tag"])
-        put_npy(ctx.store, ctx.art("models", "cb_tag_idf.npy"), feats["tag_idf"])
-        ctx.store.put_text(ctx.art("models", "cb_tag_vocab.json"), json.dumps(feats["tag_vocab"]))
-        selected_cb = {"w_tag": float(cbp["w_tag"]), "w_desc": best[2], "neighbors": int(cbp["neighbors"])}
+    if not have("cb"):
+        with phase("train.cb"):
+            cbp = ctx.cfg.model["cb"]
+            feats = cb_tfidf.build_item_features(ctx, n_items)
+            best, rows = None, []
+            for params in _grid(cbp.get("grid", {"w_desc": [cbp["w_desc"]]})):
+                w_desc = float(params.get("w_desc", cbp["w_desc"]))
+                s = cb_tfidf.item_knn(cb_tfidf.combine(feats["X_tag"], feats["X_desc"], float(cbp["w_tag"]), w_desc),
+                                      int(cbp["neighbors"]))
+                met = _eval(ctx, inp, "cb", s, "val_item", n_items)
+                rows.append({"params": {"w_tag": float(cbp["w_tag"]), "w_desc": w_desc,
+                                        "neighbors": int(cbp["neighbors"])}, "val": met})
+                LOG.info("cb w_desc=%s %s", w_desc, met)
+                if best is None or met[primary] > best[0]:
+                    best = (met[primary], s)
+            put_npz(ctx.store, ctx.art("models", "cb_item_knn.npz"), best[1])
+            put_npz(ctx.store, ctx.art("models", "cb_x_tag.npz"), feats["X_tag"])
+            put_npy(ctx.store, ctx.art("models", "cb_tag_idf.npy"), feats["tag_idf"])
+            ctx.store.put_text(ctx.art("models", "cb_tag_vocab.json"), json.dumps(feats["tag_vocab"]))
+            ctx.put_json(trial("cb"), rows)
 
-    with phase("train.als"):
-        best = None
-        for params in _grid(ctx.cfg.model["als"]["grid"]):
-            with phase("train.als.fit", **params):
-                model = als_m.fit_als(ctx, params)
-            met = _eval(ctx, als_m.with_user_factors(inp, model), "als",
-                        als_m.item_factors(model, n_items), "val_item", n_items)
-            results["als"].append({"params": params, "val": met})
-            LOG.info("als %s %s", params, met)
-            if best is None or met[primary] > best[0]:
-                best = (met[primary], model, params)
-        best[1].write().overwrite().save(ctx.uri(ctx.art("models", "als")))
-        put_npy(ctx.store, ctx.art("models", "als_item_factors.npy"), als_m.item_factors(best[1], n_items))
-        selected_als = best[2]
+    grid = _grid(ctx.cfg.model["als"]["grid"])
+    budget = int(os.environ.get("STEAM_REC_MAX_ALS_FITS", "1000"))
+    for params in grid:
+        key = f"als_{_trial_key(params)}"
+        if have(key):
+            continue
+        if budget <= 0:
+            done = sum(have(f"als_{_trial_key(p)}") for p in grid)
+            raise StageIncomplete(f"ALS grid {done}/{len(grid)} evaluated; re-run the train stage to continue")
+        budget -= 1
+        with phase("train.als.fit", **params):
+            model = als_m.fit_als(ctx, params)
+        met = _eval(ctx, als_m.with_user_factors(inp, model), "als",
+                    als_m.item_factors(model, n_items), "val_item", n_items)
+        LOG.info("als %s %s", params, met)
+        model.write().overwrite().save(ctx.uri(ctx.art("models", "als_trials", key)))
+        ctx.put_json(trial(key), [{"params": params, "val": met, "model": key}])
 
-    selection = {"primary_metric": primary, "als": selected_als, "cb": selected_cb}
+    # finalize: pick best per family on validation
+    results = {"popularity": ctx.get_json(trial("popularity")), "cb": ctx.get_json(trial("cb")),
+               "als": [ctx.get_json(trial(f"als_{_trial_key(p)}"))[0] for p in grid]}
+    best_als = max(results["als"], key=lambda r: r["val"][primary])
+    best_cb = max(results["cb"], key=lambda r: r["val"][primary])
+    model = ALSModel.load(ctx.uri(ctx.art("models", "als_trials", best_als["model"])))
+    model.write().overwrite().save(ctx.uri(ctx.art("models", "als")))
+    put_npy(ctx.store, ctx.art("models", "als_item_factors.npy"), als_m.item_factors(model, n_items))
+    for r in results["als"]:  # non-selected trial models are scratch (~1 GB each at full scale)
+        if r["model"] != best_als["model"]:
+            ctx.store.delete_prefix(ctx.art("models", "als_trials", r["model"]))
+    selection = {"primary_metric": primary, "als": best_als["params"], "cb": best_cb["params"]}
     ctx.put_json(ctx.art("models", "selection.json"), selection)
     ctx.put_json(ctx.art("metrics", "validation.json"), results)
     return {"selection": selection,

@@ -15,6 +15,10 @@ from steam_rec.storage import paths
 from steam_rec.storage.store import Store
 
 
+class StageIncomplete(Exception):
+    """Stage made progress (persisted) but is not finished; no done-marker is written."""
+
+
 @dataclass
 class Ctx:
     cfg: Config
@@ -82,7 +86,11 @@ def run_stage(ctx: Ctx, name: str, fn: Callable[[Ctx], dict], force: bool = Fals
         return ctx.get_json(marker)
     write_run_meta(ctx)
     t0 = utc_now()
-    metrics = fn(ctx) or {}
+    try:
+        metrics = fn(ctx) or {}
+    except StageIncomplete as e:
+        LOG.warning("⏸ stage %s incomplete: %s", name, e)
+        return {"stage": name, "run_id": ctx.run_id, "incomplete": str(e)}
     out = {"stage": name, "run_id": ctx.run_id, "git_commit": git_commit(), "started_at": t0,
            "finished_at": utc_now(), "elapsed_s": round((utc_now() - t0).total_seconds(), 1), "metrics": metrics}
     ctx.put_json(marker, out)
