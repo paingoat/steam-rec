@@ -6,6 +6,7 @@ with pyarrow/numpy."""
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import numpy as np
@@ -20,11 +21,18 @@ from steam_rec.storage.store import Store
 CACHE = REPO_ROOT / "data" / "cache"
 
 
+RUN_ID_RE = re.compile(r"^\d{8}T\d{6}Z-")
+
+
 def latest_run(store: Store) -> str:
-    runs = sorted({k.split("/")[1] for k in store.list("artifacts/") if k.endswith("stages/recommend.json")})
+    """Newest timestamped run with a finished 'recommend' stage; full-scale runs win over smoke/dev."""
+    runs = sorted({k.split("/")[1] for k in store.list("artifacts/") if k.endswith("stages/recommend.json")
+                   and RUN_ID_RE.match(k.split("/")[1])})
     if not runs:
         raise SystemExit("no run with a finished 'recommend' stage found in the lake")
-    return runs[-1]
+    full = [r for r in runs if store.exists(paths.artifacts(r, "run.json"))
+            and json.loads(store.get_text(paths.artifacts(r, "run.json"))).get("scale") == "full"]
+    return (full or runs)[-1]
 
 
 class Demo:

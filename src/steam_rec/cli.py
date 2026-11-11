@@ -150,7 +150,9 @@ def report_cmd(run_ids: list[str] = RunIdsArg, env: str = EnvOpt,
 
     store = get_store(load_config(env))
     ids = run_ids or sorted({k.split("/")[1] for k in store.list("artifacts/") if k.endswith("stages/evaluate.json")})
-    (REPO_ROOT / out).write_text(render([run_summary(store, r) for r in ids]))
+    notes = REPO_ROOT / "reports" / "benchmark_notes.md"
+    (REPO_ROOT / out).write_text(render([run_summary(store, r) for r in ids])
+                                 + (notes.read_text() if notes.exists() else ""))
     typer.echo(f"wrote {out} for {len(ids)} runs")
 
 

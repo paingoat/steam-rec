@@ -75,22 +75,24 @@ for stage in STAGES:
         raise SystemExit("RUN_ID env is required for pipeline stages")
     restore(RUN_ID)
     if stage == "export":
-        from steam_rec.storage.bundle import make_bundle
-
-        art = LAKE / "artifacts" / RUN_ID
-        out = drive_run(RUN_ID) / "bundle"
-        # serving bundle: everything except the full Spark ALS model (stays on Drive; ~GB at full scale)
         import shutil
         import tempfile
 
+        from steam_rec.storage.bundle import make_bundle
+
+        art = LAKE / "artifacts" / RUN_ID
+        export_dir = Path("/content/export") / RUN_ID
+        shutil.rmtree(export_dir, ignore_errors=True)
         with tempfile.TemporaryDirectory() as tmp:
             stage_dir = Path(tmp) / RUN_ID
             models_dir = art / "models"
-            shutil.copytree(art, stage_dir, ignore=lambda d, _n, md=models_dir: ["als"] if Path(d) == md else [])
-            man = make_bundle(stage_dir, Path("/content/export") / RUN_ID, RUN_ID, chunk_mb=45,
+            # serving bundle: full Spark ALS models (user factors, ~0.4 GB+) stay on Drive; serving needs item factors
+            shutil.copytree(art, stage_dir,
+                            ignore=lambda d, _n, md=models_dir: ["als", "als_trials"] if Path(d) == md else [])
+            man = make_bundle(stage_dir, export_dir, RUN_ID, chunk_mb=45,
                               meta={"run_id": RUN_ID, "git_sha": os.environ["STEAM_REC_GIT_SHA"]})
-        mirror(Path("/content/export") / RUN_ID, out)
-        print(json.dumps({"bundle_dir": f"/content/export/{RUN_ID}", "parts": len(man["parts"]),
+        mirror(export_dir, drive_run(RUN_ID) / "bundle", delete=True)
+        print(json.dumps({"bundle_dir": str(export_dir), "parts": len(man["parts"]),
                           "tar_mb": round(man["tar_size"] / 1e6, 1)}))
         continue
     ctx = _ctx("colab", SCALE, RUN_ID)
