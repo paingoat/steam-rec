@@ -26,3 +26,10 @@ scale:
 eval:
   k_values: [10, 20]
   max_eval_users: 100000
+
+gold:                     # approved at Gate 2 (2026-11-11)
+  min_user_pos: 3
+  min_item_pos: 5
+  kcore_max_rounds: 8
+  negatives: mask         # mask | drop
+  demo_users: 2000        # extra non-eval users that get precomputed top-K for the demo

@@ -1,2 +1,5 @@
 scale: {name: dev, max_recommendations: 1000000}
 spark: {driver_memory: 5g}
+eval: {max_eval_users: 20000}
+model:
+  als: {grid: {rank: [32, 64], regParam: [0.1], alpha: [10.0, 40.0], maxIter: [10]}}

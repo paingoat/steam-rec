@@ -1,6 +1,6 @@
 # Data contracts — Steam Recommendation MVP
 
-Status: **DRAFT, chờ duyệt ở Gate 2**. Các con số lấy từ `reports/eda/eda_summary.json`
+Status: **ĐÃ DUYỆT ở Gate 2 (2026-11-11)**: k-core 3/5, review tiêu cực → mask, split leave-last-out theo thời gian cho từng user, chạy full trên Colab. Các con số lấy từ `reports/eda/eda_summary.json`
 (Bronze snapshot `bronze/kaggle/v28/20261111T020628Z`).
 
 ## Bronze (bất biến)

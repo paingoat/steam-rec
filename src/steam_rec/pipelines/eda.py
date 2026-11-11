@@ -13,6 +13,7 @@ from steam_rec.common.config import REPO_ROOT, Config
 from steam_rec.common.logging import LOG, phase
 from steam_rec.common.schemas import RAW_HEADERS
 from steam_rec.common.spark import get_spark
+from steam_rec.features.cf_interactions import kcore
 from steam_rec.pipelines.bronze_reader import bronze_manifest, read_bronze
 from steam_rec.storage import paths
 from steam_rec.storage.store import Store
@@ -37,22 +38,6 @@ def _thresholds(df: DataFrame, col: str, ts=(1, 2, 3, 5, 10, 20, 50)) -> dict:
 
 def _nulls(df: DataFrame) -> dict:
     return df.agg(*[F.sum(F.col(c).isNull().cast("long")).alias(c) for c in df.columns]).first().asDict()
-
-
-def kcore(pos: DataFrame, min_u: int, min_i: int, rounds: int = 8) -> tuple[DataFrame, int]:
-    """Iterative k-core. Each round is checkpointed to disk so the plan/lineage does not grow (OOM otherwise)."""
-    cur, n_cur = pos, pos.count()
-    for r in range(1, rounds + 1):
-        u = cur.groupBy("user_id").count().filter(F.col("count") >= min_u).select("user_id")
-        i = cur.groupBy("app_id").count().filter(F.col("count") >= min_i).select("app_id")
-        nxt = cur.join(F.broadcast(i), "app_id").join(u, "user_id").checkpoint(eager=True)
-        n_nxt = nxt.count()
-        cur = nxt
-        if n_nxt == n_cur:
-            return cur, r
-        n_cur = n_nxt
-    LOG.warning("k-core (%s,%s) not converged after %s rounds", min_u, min_i, rounds)
-    return cur, -rounds
 
 
 def run_eda(cfg: Config, store: Store, out_dir: Path | None = None) -> dict:

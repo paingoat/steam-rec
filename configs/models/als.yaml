@@ -1,0 +1,10 @@
+# Implicit ALS (Spark MLlib). `grid` is searched on validation; best config is refit-free (same model scored on test).
+rank: 64
+regParam: 0.1
+alpha: 10.0
+maxIter: 10
+grid:
+  rank: [32, 64]
+  regParam: [0.01, 0.1]
+  alpha: [1.0, 10.0, 40.0]
+  maxIter: [10]

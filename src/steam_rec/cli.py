@@ -61,6 +61,48 @@ def eda_cmd(env: str = EnvOpt, scale: str = typer.Option("full", "--scale")) -> 
     typer.echo(json.dumps(rep["rows"]))
 
 
+STAGES = ["silver", "gold", "train", "evaluate", "recommend"]
+StagesArg = typer.Argument(..., help=f"one or more of {STAGES} or 'all'")
+
+
+def _ctx(env: str, scale: str, run_id: str | None):
+    from steam_rec.common.run_id import new_run_id
+    from steam_rec.pipelines.runner import Ctx
+    from steam_rec.storage.store import get_store
+
+    cfg = load_config(env, scale)
+    rid = run_id or new_run_id(cfg.config_hash())
+    LOG.info("run_id=%s env=%s scale=%s", rid, env, scale)
+    return Ctx(cfg, get_store(cfg), rid)
+
+
+def _stage_fn(name: str):
+    from steam_rec.pipelines import gold, modeling, silver
+
+    return {"silver": silver.run_silver, "gold": gold.run_gold, "train": modeling.run_train,
+            "evaluate": modeling.run_evaluate, "recommend": modeling.run_recommend}[name]
+
+
+@app.command("run")
+def run_cmd(
+    stages: list[str] = StagesArg,
+    env: str = EnvOpt, scale: str = ScaleOpt,
+    run_id: str = typer.Option(None, "--run-id", help="resume/extend an existing run"),
+    force: bool = typer.Option(False, "--force", help="recompute stages even if already done"),
+) -> None:
+    """Run pipeline stages (idempotent per run_id; finished stages are skipped)."""
+    from steam_rec.pipelines.runner import run_stage
+
+    names = STAGES if stages == ["all"] else stages
+    bad = [s for s in names if s not in STAGES]
+    if bad:
+        raise typer.BadParameter(f"unknown stages {bad}")
+    ctx = _ctx(env, scale, run_id)
+    for name in names:
+        run_stage(ctx, name, _stage_fn(name), force=force)
+    typer.echo(json.dumps({"run_id": ctx.run_id, "stages": names}))
+
+
 @app.command("show-config")
 def show_config(env: str = EnvOpt, scale: str = ScaleOpt) -> None:
     cfg = load_config(env, scale)

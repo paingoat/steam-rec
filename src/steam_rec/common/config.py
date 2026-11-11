@@ -49,6 +49,14 @@ class EvalCfg(BaseModel):
     max_eval_users: int = 100_000
 
 
+class GoldCfg(BaseModel):
+    min_user_pos: int = 3
+    min_item_pos: int = 5
+    kcore_max_rounds: int = 8
+    negatives: Literal["mask", "drop"] = "mask"
+    demo_users: int = 2000
+
+
 class Config(BaseModel):
     execution: Literal["local", "colab"] = "local"
     dataset: DatasetCfg
@@ -56,6 +64,7 @@ class Config(BaseModel):
     spark: SparkCfg = SparkCfg()
     scale: ScaleCfg = ScaleCfg()
     eval: EvalCfg = EvalCfg()
+    gold: GoldCfg = GoldCfg()
     model: dict[str, Any] = Field(default_factory=dict)
 
     def config_hash(self) -> str:

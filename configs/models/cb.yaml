@@ -1,0 +1,9 @@
+# TF-IDF over tags (+ description), item-kNN cosine. User score = sum of neighbor sims over train history.
+tag_vocab: 1000
+desc_vocab: 20000
+desc_min_df: 5
+w_tag: 1.0
+w_desc: 0.3
+neighbors: 100
+grid:
+  w_desc: [0.0, 0.3, 1.0]
