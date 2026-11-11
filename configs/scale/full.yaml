@@ -1,7 +1,8 @@
 scale: {name: full, max_recommendations: null}
 spark: {shuffle_partitions: 128}
 eval: {max_eval_users: 100000}
-# Grid narrowed from dev results (rank 64 / alpha 10 best on validation; alpha 40 worse) -> 4 ALS fits.
+# ALS grid for full data: rank 32 only (user decision 2026-11-11 after rank-64 fits proved too slow on an 8-core VM;
+# implicit-ALS cost grows ~rank^3 per user). alpha 5/10 bracket the dev optimum -> 2 fits.
 model:
-  als: {grid: {rank: [64, 128], regParam: [0.1], alpha: [5.0, 10.0], maxIter: [10]}}
+  als: {grid: {rank: [32], regParam: [0.1], alpha: [5.0, 10.0], maxIter: [10]}}
   cb: {grid: {w_desc: [0.3, 1.0]}}
