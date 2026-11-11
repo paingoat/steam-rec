@@ -21,6 +21,7 @@ def get_spark(cfg: Config, app_name: str = "steam-rec"):
         .config("spark.sql.adaptive.enabled", "true")
         .config("spark.ui.showConsoleProgress", "false")
         .config("spark.sql.parquet.compression.codec", "zstd")
+        .config("spark.cleaner.referenceTracking.cleanCheckpoints", "true")
     )
     if cfg.storage.backend == "s3":
         s = s3_settings()

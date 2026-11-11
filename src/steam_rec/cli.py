@@ -50,6 +50,17 @@ def ingest_cmd(env: str = EnvOpt, raw_dir: str = typer.Option(None, help="use al
     typer.echo(json.dumps({"ingest_run_id": m["ingest_run_id"], "files": [(f["name"], f["size"]) for f in m["files"]]}))
 
 
+@app.command("eda")
+def eda_cmd(env: str = EnvOpt, scale: str = typer.Option("full", "--scale")) -> None:
+    """M3: EDA over the latest Bronze snapshot -> reports/eda/eda_summary.json"""
+    from steam_rec.pipelines.eda import run_eda
+    from steam_rec.storage.store import get_store
+
+    cfg = load_config(env, scale)
+    rep = run_eda(cfg, get_store(cfg))
+    typer.echo(json.dumps(rep["rows"]))
+
+
 @app.command("show-config")
 def show_config(env: str = EnvOpt, scale: str = ScaleOpt) -> None:
     cfg = load_config(env, scale)
