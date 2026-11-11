@@ -1,0 +1,2 @@
+scale: {name: dev, max_recommendations: 1000000}
+spark: {driver_memory: 5g}

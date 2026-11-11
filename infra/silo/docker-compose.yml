@@ -1,0 +1,19 @@
+# Local lake storage: PGSTY SILO (S3-compatible, MinIO fork). Bound to localhost only.
+name: steam-rec-silo
+services:
+  silo:
+    image: docker.io/pgsty/silo:RELEASE.2026-11-09T00-00-00Z
+    container_name: steam-rec-silo
+    command: server /data --console-address ":9001"
+    env_file: .env
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - ../../data/silo:/data
+    healthcheck:
+      test: ["CMD-SHELL", "mcli ready local >/dev/null 2>&1 || curl -fsS http://127.0.0.1:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped

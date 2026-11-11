@@ -1,0 +1,12 @@
+execution: colab
+storage:
+  backend: local
+  local_root: /content/work/lake
+  staging_dir: /content/work/staging
+  checkpoint_root: /content/drive/MyDrive/Research/steam-rec
+spark:
+  master: "local[*]"
+  driver_memory: 9g          # override for --high-mem VMs via scale/full or CLI
+  shuffle_partitions: 64
+  local_dir: /content/work/spark-tmp
+  checkpoint_dir: /content/work/spark-checkpoint

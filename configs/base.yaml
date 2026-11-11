@@ -1,0 +1,28 @@
+# Shared defaults. Env files (local/colab) and scale files override these keys.
+dataset:
+  kaggle_handle: antonkozyriev/game-recommendations-on-steam
+  version: 28
+  files: [games.csv, games_metadata.json, users.csv, recommendations.csv]
+
+storage:
+  backend: s3            # s3 (SILO) | local (filesystem)
+  bucket: steam-rec
+  local_root: data/lake  # used when backend=local
+  staging_dir: data/staging
+
+spark:
+  master: "local[8]"
+  driver_memory: 4g
+  shuffle_partitions: 16
+  local_dir: data/spark-tmp
+  checkpoint_dir: data/spark-checkpoint
+  hadoop_aws_version: 3.4.1
+
+scale:
+  name: smoke
+  max_recommendations: 100000   # null => all rows
+  sample_seed: 42
+
+eval:
+  k_values: [10, 20]
+  max_eval_users: 100000

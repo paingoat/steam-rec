@@ -1,0 +1,3 @@
+execution: local
+storage:
+  backend: s3

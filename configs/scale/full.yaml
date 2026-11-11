@@ -1,0 +1,2 @@
+scale: {name: full, max_recommendations: null}
+spark: {shuffle_partitions: 128}
