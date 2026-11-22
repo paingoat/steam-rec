@@ -51,8 +51,8 @@ uv run steam-rec demo --tags "RPG,Open World,Souls-like" # cold-start theo tag
 uv run steam-rec demo --user-id 1                        # user lạ -> fallback popularity
 ```
 
-**Không có SILO hay dữ liệu local** (ví dụ người làm web): kéo bundle demo từ HF (dataset private
-`paingoat/steam-rec-demo`) vào lake filesystem rồi chạy với `--env demo`. Xem `docs/web-demo.md`.
+**Không có SILO hay dữ liệu local** (ví dụ người làm web): kéo bundle demo từ HF (dataset public
+`paingoat/steam-rec-demo`, không cần token) vào lake filesystem rồi chạy với `--env demo`. Xem `docs/web-demo.md`.
 ```bash
 uv run --with huggingface_hub python scripts/demo/fetch_bundle.py
 uv run steam-rec demo --env demo --user-id 11442391 --model als

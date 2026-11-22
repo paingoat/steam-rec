@@ -1,6 +1,6 @@
-"""Kéo bundle artifacts của một run từ HF Hub (dataset private) và import vào lake local của env 'demo'.
+"""Kéo bundle artifacts của một run từ HF Hub (dataset public) và import vào lake local của env 'demo'.
 
-Chạy (từ gốc repo, cần HF token có quyền đọc repo: `hf auth login` hoặc biến HF_TOKEN):
+Chạy từ gốc repo (repo HF là public, không cần token):
     uv run --with huggingface_hub python scripts/demo/fetch_bundle.py            # run mới nhất trên HF
     uv run --with huggingface_hub python scripts/demo/fetch_bundle.py --run-id <run_id>
 

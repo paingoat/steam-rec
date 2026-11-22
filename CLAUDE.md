@@ -9,7 +9,7 @@ dữ liệu cuối cùng, cấu hình và demo; Google Colab chỉ là compute t
   `steam_rec.serving.demo.Demo`: code web đặt trong `web/`, **không sửa `src/steam_rec/`** hay các config pipeline.
   Nếu cần API mới thì viết adapter trong `web/`, hoặc đề xuất cho chủ dự án.
 - Dữ liệu demo không nằm trong git. Lấy bằng `uv run --with huggingface_hub python scripts/demo/fetch_bundle.py`
-  (từ HF dataset private `paingoat/steam-rec-demo`, verify SHA-256), sau đó luôn dùng `--env demo` / `load_config("demo")`
+  (từ HF dataset public `paingoat/steam-rec-demo`, không cần token, verify SHA-256), sau đó luôn dùng `--env demo` / `load_config("demo")`
   (lake là `data/lake/`, không cần MinIO hay Colab).
 - Người làm web không cần Colab: các quy tắc Colab bên dưới chỉ áp dụng cho pipeline.
 

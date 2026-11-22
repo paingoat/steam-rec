@@ -10,7 +10,7 @@
 - Git chỉ chứa code, config và report. **Dữ liệu không nằm trong git** (`data/` đã gitignore):
   - Silver/Gold full và checkpoint nằm trên Google Drive của chủ dự án. Web **không cần** phần này.
   - Những gì demo cần (top-K precomputed, catalog, model nhỏ cho cold-start) nằm trong một bundle khoảng 65 MB trên
-    HF Hub, ở dataset **private** `paingoat/steam-rec-demo`, thư mục `bundles/<run_id>/`. Bundle gồm các tar part và
+    HF Hub, ở dataset **public** `paingoat/steam-rec-demo`, thư mục `bundles/<run_id>/`. Bundle gồm các tar part và
     `bundle_manifest.json` (SHA-256), đúng định dạng mà pipeline export ra.
 - Môi trường `demo` (`configs/demo.yaml`) dùng lake là thư mục `data/lake/` nên **không cần MinIO/SILO, Spark, Colab
   hay `.env`**.
@@ -19,9 +19,7 @@
 
 ```bash
 uv sync                                   # Python 3.13, giống pipeline
-hf auth login                             # hoặc export HF_TOKEN=...  (token phải đọc được repo private ở trên;
-                                          #  xin quyền từ chủ dự án)
-uv run --with huggingface_hub python scripts/demo/fetch_bundle.py        # tải run mới nhất -> verify SHA-256 -> data/lake
+uv run --with huggingface_hub python scripts/demo/fetch_bundle.py        # tải run mới nhất (không cần token) -> verify SHA-256 -> data/lake
 uv run steam-rec demo --env demo --user-id 11442391 --model als          # kiểm tra nhanh
 uv run steam-rec demo --env demo --tags "RPG,Open World" -k 5            # cold-start theo tag
 ```
@@ -83,8 +81,8 @@ Dữ liệu tham chiếu có sẵn trên object (chỉ đọc):
 Sau khi import một run mới (`uv run steam-rec import --bundle-dir data/inbox/<run_id>`):
 
 ```bash
-conda run -n research python scripts/demo/publish_bundle.py <run_id>   # env nào có huggingface_hub + token cũng được
+conda run -n research python scripts/demo/publish_bundle.py <run_id>   # cần HF token có quyền ghi (env research đã có)
 ```
 
-Lệnh này chỉ upload các tar part và manifest lên `bundles/<run_id>/`. Repo HF ở chế độ private, nên người làm web
-cần được cấp quyền đọc: chuyển repo sang một org và thêm họ vào, hoặc cấp một fine-grained token chỉ đọc repo này.
+Lệnh này chỉ upload các tar part và manifest lên `bundles/<run_id>/`. Repo HF ở chế độ **public**: ai cũng tải được mà
+không cần token. Vì vậy chỉ đưa lên artifacts phục vụ demo, không đưa silver/gold hay dữ liệu thô.
