@@ -3,6 +3,16 @@
 Bối cảnh dự án: xem `.claude/context/` (gitignored) (propose, plan). Local Ubuntu là source of truth cho code,
 dữ liệu cuối cùng, cấu hình và demo; Google Colab chỉ là compute tạm thời.
 
+## Web demo (tạm thời) — đọc `docs/web-demo.md` trước khi làm
+
+- Thiết kế chính là pipeline batch trong `src/steam_rec/`. Phần web chỉ là lớp vỏ tạm thời quanh
+  `steam_rec.serving.demo.Demo`: code web đặt trong `web/`, **không sửa `src/steam_rec/`** hay các config pipeline.
+  Nếu cần API mới thì viết adapter trong `web/`, hoặc đề xuất cho chủ dự án.
+- Dữ liệu demo không nằm trong git. Lấy bằng `uv run --with huggingface_hub python scripts/demo/fetch_bundle.py`
+  (từ HF dataset private `paingoat/steam-rec-demo`, verify SHA-256), sau đó luôn dùng `--env demo` / `load_config("demo")`
+  (lake là `data/lake/`, không cần MinIO hay Colab).
+- Người làm web không cần Colab: các quy tắc Colab bên dưới chỉ áp dụng cho pipeline.
+
 ## Google Colab CLI
 
 - CLI: `colab` (PyPI `google-colab-cli`, cài bằng `uv tool install google-colab-cli`; nâng cấp `uv tool upgrade google-colab-cli`).

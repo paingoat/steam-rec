@@ -8,6 +8,7 @@ Spark xử lý trên local (smoke/dev) hoặc trên một VM **Colab** (full). C
 - Kế hoạch và quyết định: `.claude/plans/MVP-BATCH-IMPLEMENTATION-PLAN.md` (local, không push)
 - Data contracts: `docs/data-contracts.md` · EDA: `reports/eda.md` · Benchmark: `reports/benchmark.md`
 - Vận hành Colab: `docs/runbook-colab.md` + `CLAUDE.md` + skill `.claude/skills/colab-operator/`
+- Làm web trên demo (tạm thời): `docs/web-demo.md`
 
 ## Kết quả (full data, test, 100k user)
 | model | Recall@20 | NDCG@20 | catalog coverage@20 | eligible users |
@@ -48,6 +49,13 @@ uv run steam-rec import --bundle-dir data/inbox/<run_id>
 uv run steam-rec demo --user-id 11442391 --model als     # als | cb | popularity
 uv run steam-rec demo --tags "RPG,Open World,Souls-like" # cold-start theo tag
 uv run steam-rec demo --user-id 1                        # user lạ -> fallback popularity
+```
+
+**Không có SILO hay dữ liệu local** (ví dụ người làm web): kéo bundle demo từ HF (dataset private
+`paingoat/steam-rec-demo`) vào lake filesystem rồi chạy với `--env demo`. Xem `docs/web-demo.md`.
+```bash
+uv run --with huggingface_hub python scripts/demo/fetch_bundle.py
+uv run steam-rec demo --env demo --user-id 11442391 --model als
 ```
 
 ## Tests

@@ -1,0 +1,7 @@
+# Env "demo": lake = local filesystem (data/lake/), không cần MinIO/SILO hay .env S3.
+# Dùng cho người chỉ cần chạy demo / phát triển web: bundle kéo từ HF bằng scripts/demo/fetch_bundle.py,
+# sau đó `uv run steam-rec demo --env demo ...`. Pipeline chính vẫn dùng env local (SILO) / colab.
+execution: local
+storage:
+  backend: local
+  local_root: data/lake
