@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# steam-rec web frontend
 
-## Getting Started
-
-First, run the development server:
+Next.js 16 (App Router, Cache Components) + Tailwind 4. A thin UI over the offline demo `steam_rec.serving.demo.Demo`
+(see `docs/web-demo.md`). It never touches the pipeline or the data directly; everything goes through the backend API.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev            # http://localhost:3000
+npm run lint && npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Without `NEXT_PUBLIC_API_URL` the site runs on **mock data** (`src/lib/mock.ts`, same shape as `Demo` output) and shows
+a yellow "Mock data" badge. To use the real backend, create `.env.local`:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`NEXT_PUBLIC_*` is inlined at build time, so rebuild after changing it.
 
-## Learn More
+## Pages
 
-To learn more about Next.js, take a look at the following resources:
+| Route | What | Data |
+|---|---|---|
+| `/login` | Sign in with a numeric `user_id` (cookie `uid`, no password) | — |
+| `/discover?model=als\|cb\|popularity` | Feature [1]: the user's precomputed top-K, model switch, `mode` badge, popularity fallback notice | `GET /api/recommend/{user_id}` |
+| `/game/[app_id]` | Game detail + **Similar Titles** (feature [2]: game tags → cold-start, game itself excluded) | `GET /api/games/{app_id}`, `GET /api/games/{app_id}/similar` |
+| `/browse?tags=a,b` / `/browse?q=` | Top categories, tag filter sidebar (cold-start by tags), title search | `GET /api/tags`, `GET /api/recommend/tags`, `GET /api/games?q=` |
+| `/about` | Dataset, pipeline, models, benchmark table (static, `src/lib/report.ts`) | — |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+`/discover` needs a session; the other pages are public.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## API contract expected from the backend
 
-## Deploy on Vercel
+All responses are JSON. Item lists follow `RecResult` / `RecItem` in `src/lib/types.ts`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Endpoint | Returns | Backend implementation |
+|---|---|---|
+| `GET /api/users/{user_id}` | `{user_id, known}` | `user_id in demo.known` |
+| `GET /api/recommend/{user_id}?model=` | `RecResult` | `demo.for_user(user_id, model)` |
+| `GET /api/recommend/tags?tags=a&tags=b` | `RecResult` | `demo.for_new_user(tags)`; empty list → popularity fallback |
+| `GET /api/games/{app_id}` | `GameDetail` or 404 | row of `demo.catalog` by `app_id`, **all** tags |
+| `GET /api/games/{app_id}/similar` | `RecResult` | `for_new_user(game tags)` with k+1, drop the game itself, keep k |
+| `GET /api/games?q=` | `GameDetail[]` | case-insensitive title match on `demo.catalog`, limit ~20 |
+| `GET /api/tags` | `string[]` | `list(demo.tag_vocab)` (normalized: lowercase, `_`) |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Every `RecItem` should also carry `price_final` and `positive_ratio` from `demo.catalog` (Demo itself does not return
+them); the UI hides them when missing. Enable CORS for the frontend origin. In FastAPI, declare
+`/api/recommend/tags` before `/api/recommend/{user_id}` so `tags` is not parsed as a user id.
+
+## Layout
+
+```
+src/app/         routes (page.tsx, loading.tsx, error.tsx, not-found.tsx), actions.ts = login/logout
+src/components/  SiteHeader/Footer, NavTabs, DiscoverCard, BrowseRow, GameTile, GameImage, TagFilter, Rating, Skeleton
+src/lib/         api.ts (fetch + mock switch), mock.ts, types.ts, session.ts, report.ts, format.ts
+```
+
+Game images come from Steam's public CDN (`header.jpg`, `capsule_616x353.jpg`) and fall back to the title when missing.

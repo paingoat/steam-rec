@@ -50,12 +50,6 @@ export default async function LoginPage() {
         <LoginForm />
       </div>
 
-      <footer className="bg-[#171a21] py-6 text-[12px] text-[#8f98a0]">
-        <div className="mx-auto max-w-[940px] px-4">
-          Student project for a Big Data course — not affiliated with or endorsed by Valve Corporation. Steam and the
-          Steam logo are trademarks of Valve Corporation.
-        </div>
-      </footer>
     </div>
   );
 }
