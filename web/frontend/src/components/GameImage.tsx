@@ -3,11 +3,24 @@
 import { useState } from "react";
 import { steamHeader } from "@/lib/api";
 
-// Ảnh header.jpg từ CDN của Steam; game đã bị gỡ thì không có ảnh -> hiện tên game trên nền tối
-export function GameImage({ appId, title, className = "" }: { appId: number; title: string; className?: string }) {
-  const [failed, setFailed] = useState(false);
+const capsule = (appId: number) => `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/capsule_616x353.jpg`;
 
-  if (failed) {
+// Ảnh từ CDN của Steam: capsule (to) -> header.jpg -> tên game trên nền tối nếu game đã bị gỡ
+export function GameImage({
+  appId,
+  title,
+  variant = "header",
+  className = "",
+}: {
+  appId: number;
+  title: string;
+  variant?: "header" | "capsule";
+  className?: string;
+}) {
+  const sources = variant === "capsule" ? [capsule(appId), steamHeader(appId)] : [steamHeader(appId)];
+  const [i, setI] = useState(0);
+
+  if (i >= sources.length) {
     return (
       <div className={`grid place-items-center bg-surface-2 p-4 text-center text-sm text-muted ${className}`}>
         {title}
@@ -17,10 +30,10 @@ export function GameImage({ appId, title, className = "" }: { appId: number; tit
   return (
     // eslint-disable-next-line @next/next/no-img-element -- ảnh CDN ngoài, không cần tối ưu qua server Next
     <img
-      src={steamHeader(appId)}
+      src={sources[i]}
       alt={title}
       loading="lazy"
-      onError={() => setFailed(true)}
+      onError={() => setI(i + 1)}
       className={`object-cover ${className}`}
     />
   );

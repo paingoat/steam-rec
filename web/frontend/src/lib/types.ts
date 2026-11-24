@@ -23,6 +23,16 @@ export interface RecResult {
   unknown_tags?: string[];
 }
 
+// Một dòng của demo.catalog (đủ tags, không cắt còn 5)
+export interface GameDetail {
+  app_id: number;
+  title: string;
+  rating: string;
+  positive_ratio: number;
+  price_final: number;
+  tags: string[];
+}
+
 export interface UserCheck {
   user_id: number;
   known: boolean; // có top-K precomputed hay không

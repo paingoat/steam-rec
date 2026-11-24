@@ -1,4 +1,4 @@
-import type { Model, RecItem, RecResult } from "./types";
+import type { GameDetail, Model, RecItem, RecResult } from "./types";
 
 // Dữ liệu giả cùng format với Demo, chỉ dùng khi chưa đặt NEXT_PUBLIC_API_URL.
 // app_id là game thật để ảnh header.jpg của Steam hiển thị được.
@@ -66,4 +66,51 @@ export function mockForUser(userId: number, model: Model, known: boolean): RecRe
     };
   }
   return { user_id: userId, mode: `precomputed:${model}`, run_id: "mock", items: items(model, model) };
+}
+
+// Catalog giả = mọi game xuất hiện trong ROWS (không trùng app_id)
+const CATALOG = new Map<number, GameDetail>();
+for (const rows of Object.values(ROWS)) {
+  for (const [app_id, title, rating, positive_ratio, price_final, tags] of rows) {
+    CATALOG.set(app_id, { app_id, title, rating, positive_ratio, price_final, tags });
+  }
+}
+
+export const mockCatalog = (): GameDetail[] => [...CATALOG.values()];
+
+export function mockGame(appId: number): GameDetail | null {
+  return CATALOG.get(appId) ?? null;
+}
+
+// Giống for_new_user(tags) nhưng chấm điểm bằng độ trùng tag trên catalog giả
+export function mockForTags(tags: string[], exclude?: number, k = 10): RecResult {
+  const norm = (t: string) => t.trim().toLowerCase().replace(/[ -]/g, "_");
+  const want = new Set(tags.map(norm));
+  const scored = mockCatalog()
+    .filter((g) => g.app_id !== exclude)
+    .map((g) => {
+      const hit = g.tags.filter((t) => want.has(norm(t))).length;
+      return { g, score: hit / Math.sqrt(want.size * g.tags.length || 1) };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score || b.g.positive_ratio - a.g.positive_ratio)
+    .slice(0, k);
+  const known = new Set(mockCatalog().flatMap((g) => g.tags.map(norm)));
+  return {
+    mode: scored.length ? "cold-start:tags" : "fallback:popularity (no known tags)",
+    unknown_tags: tags.filter((t) => !known.has(norm(t))),
+    items: (scored.length ? scored : items("popularity", "popularity").map((i) => ({ g: mockGame(i.app_id)!, score: i.score })))
+      .slice(0, k)
+      .map(({ g, score }, i) => ({
+        rank: i + 1,
+        app_id: g.app_id,
+        title: g.title,
+        rating: g.rating,
+        positive_ratio: g.positive_ratio,
+        price_final: g.price_final,
+        tags: g.tags.slice(0, 5),
+        score: Math.round(score * 1e4) / 1e4,
+        source: scored.length ? "cb-tags" : "popularity",
+      })),
+  };
 }

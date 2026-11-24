@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { formatPrice } from "@/lib/format";
 import type { RecItem } from "@/lib/types";
 import { GameImage } from "./GameImage";
+import { Rating } from "./Rating";
 
 const MODEL_LABEL: Record<string, string> = {
   als: "ALS (collaborative filtering)",
@@ -11,14 +13,9 @@ const MODEL_LABEL: Record<string, string> = {
 
 const btn = "rounded-[3px] bg-surface-2 px-4 py-2 text-[13px] text-text hover:bg-accent";
 
-function price(p?: number) {
-  if (p === undefined) return null;
-  return p === 0 ? "Free to Play" : `$${p.toFixed(2)}`;
-}
-
 // Một thẻ game trong Discovery Feed (theo discover.png)
 export function DiscoverCard({ item }: { item: RecItem }) {
-  const pos = item.positive_ratio;
+  const price = formatPrice(item.price_final);
   const href = `/game/${item.app_id}`;
 
   return (
@@ -57,28 +54,14 @@ export function DiscoverCard({ item }: { item: RecItem }) {
           </div>
         )}
 
-        {item.rating && (
-          <div className="mt-4 max-w-[260px] text-[12px]">
-            <span className="text-link">{item.rating}</span>
-            {pos !== undefined && (
-              <>
-                <span className="text-muted"> · {pos}% positive</span>
-                <div className="mt-1.5 flex h-[3px] overflow-hidden rounded-full bg-negative">
-                  <div className="bg-link" style={{ width: `${pos}%` }} />
-                </div>
-              </>
-            )}
-          </div>
-        )}
+        <Rating rating={item.rating} positive={item.positive_ratio} className="mt-4 max-w-[260px]" />
 
         <div className="mt-auto flex flex-wrap items-center gap-3 pt-5">
           <Link href={`${href}#similar`} className={btn}>
             Find more like this
           </Link>
           <div className="ml-auto flex items-center gap-3">
-            {price(item.price_final) && (
-              <span className="text-[15px] font-semibold text-text">{price(item.price_final)}</span>
-            )}
+            {price && <span className="text-[15px] font-semibold text-text">{price}</span>}
             <Link href={href} className={btn}>
               Visit Store Page
             </Link>
