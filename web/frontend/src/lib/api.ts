@@ -64,9 +64,24 @@ export function normTag(t: string): string {
   return t.trim().toLowerCase().replace(/[ -]/g, "_");
 }
 
-// "open_world" -> "Open World" để hiển thị
+const UPPER = new Set(["rpg", "jrpg", "arpg", "crpg", "fps", "mmo", "mmorpg", "pvp", "pve", "vr", "rts", "moba", "2d", "3d", "4x"]);
+
+// "open_world" -> "Open World", "rpg" -> "RPG", "co_op" -> "Co-op" để hiển thị
 export function prettyTag(t: string): string {
-  return t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  if (t === "co_op") return "Co-op";
+  return t
+    .split("_")
+    .map((w) => (UPPER.has(w) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1)))
+    .join(" ");
+}
+
+// Tìm game theo tên trong catalog (adapter của backend lọc demo.catalog)
+export async function searchGames(q: string): Promise<GameDetail[]> {
+  if (!API_URL) {
+    const needle = q.trim().toLowerCase();
+    return mockCatalog().filter((g) => g.title.toLowerCase().includes(needle));
+  }
+  return get<GameDetail[]>(`/api/games?q=${encodeURIComponent(q)}`);
 }
 
 export function steamStoreUrl(appId: number): string {

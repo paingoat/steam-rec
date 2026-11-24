@@ -26,8 +26,15 @@ export async function SiteHeader() {
         </div>
       </div>
       <div className="border-b border-border bg-nav">
-        <div className="flex h-11 w-full items-center px-6">
+        <div className="flex h-11 w-full items-center gap-4 px-6">
           <NavTabs />
+          <form action="/browse" className="ml-auto hidden sm:block">
+            <input
+              name="q"
+              placeholder="Search games..."
+              className="h-8 w-[260px] rounded-[3px] border border-border bg-input px-3 text-[13px] text-text outline-none placeholder:text-muted focus:border-accent"
+            />
+          </form>
         </div>
       </div>
     </header>
