@@ -10,6 +10,9 @@ export interface RecItem {
   rating: string;
   tags: string[]; // tối đa 5
   source: string; // ví dụ "popularity-backfill"
+  // Demo không trả 2 trường này; adapter của backend lấy thêm từ demo.catalog
+  price_final?: number;
+  positive_ratio?: number; // 0-100
 }
 
 export interface RecResult {
