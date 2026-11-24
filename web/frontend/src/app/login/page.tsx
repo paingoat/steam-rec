@@ -9,6 +9,7 @@ export const metadata: Metadata = { title: "Sign In" };
 const MENU = [
   { href: "/login", label: "Your Store" },
   { href: "/browse", label: "Browse by Tags" },
+  { href: "/about", label: "About" },
 ];
 
 export default async function LoginPage() {

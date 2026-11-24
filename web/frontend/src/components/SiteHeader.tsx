@@ -51,6 +51,7 @@ function ClassicHeader() {
         </Link>
         <nav className="flex gap-7 pt-1 text-sm uppercase tracking-wide text-[#dcdedf]">
           <Link href="/browse" className="hover:text-white">Store</Link>
+          <Link href="/about" className="hover:text-white">About</Link>
           <Link href="/login" className="hover:text-white">Sign in</Link>
         </nav>
         <div className="absolute right-4 top-1.5 text-[11px] text-[#b8b6b4]">
