@@ -11,6 +11,8 @@ uv run --with huggingface_hub python scripts/demo/fetch_bundle.py
 uv run --group web uvicorn main:app --app-dir web/backend --port 8000
 ```
 
+On Windows (PowerShell), `.\web\backend\run.ps1` does the same with `PYTHONUTF8=1` and auto-reload, from any folder.
+
 `Demo` is created once at startup, so the first request is not slow. The first start copies parquet files to
 `data/cache/<run_id>/`.
 
