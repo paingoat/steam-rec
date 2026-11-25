@@ -1,8 +1,8 @@
 # Runs INSIDE the Colab kernel (foreground!) via:
 #   colab exec -s steam-rec-mvp --timeout 5400 --env STAGES=silver,gold --env SCALE=full --env RUN_ID=<id> \
 #       -f scripts/colab/run_stage.py
-# Env: STAGES (comma list incl. 'ingest', 'game-meta', 'eda-time', 'export'), SCALE,
-#      RUN_ID (required except for ingest/game-meta/eda-time).
+# Env: STAGES (comma list incl. 'ingest', 'game-meta', 'steamspy', 'eda-time', 'export'), SCALE,
+#      RUN_ID (required except for ingest/game-meta/steamspy/eda-time).
 # Each stage: restore lake from Drive (if VM was reset) -> run (skips if done) -> mirror lake to Drive.
 import json
 import os
@@ -80,6 +80,22 @@ for stage in STAGES:
         with tarfile.open("/content/game_meta.tgz") as t:
             t.extractall(LAKE / "bronze", filter="data")
         LOG.info("game_meta bronze: %s", sorted(p.name for p in (LAKE / "bronze" / "game_meta").iterdir()))
+        continue
+    if stage == "steamspy":
+        # finish SteamSpy tags on the VM (fast network); resumes from the uploaded local cache
+        import shutil
+
+        from steam_rec.ingestion.game_meta import ingest_meta
+        from steam_rec.storage.store import get_store
+
+        cache = cfg.resolve_path(cfg.storage.staging_dir) / "steamspy_cache.jsonl"
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        if Path("/content/steamspy_cache.jsonl").exists() and not cache.exists():
+            shutil.copy("/content/steamspy_cache.jsonl", cache)
+        res = ingest_meta(cfg, get_store(cfg), skip_hf=True)
+        shutil.copy(cache, "/content/steamspy_cache.jsonl")
+        mirror(LAKE / "bronze" / "game_meta", DRIVE / "bronze_game_meta")
+        print(json.dumps({"stage": "steamspy", **res}))
         continue
     if stage == "eda-time":
         from steam_rec.pipelines.eda_time import run_eda_time
