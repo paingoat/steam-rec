@@ -45,7 +45,7 @@ class LocalStore:
         base = self._p(prefix)
         if not base.exists():
             return []
-        return sorted(str(p.relative_to(self.root)) for p in base.rglob("*") if p.is_file())
+        return sorted(p.relative_to(self.root).as_posix() for p in base.rglob("*") if p.is_file())
 
     def put_file(self, local: Path, key: str) -> None:
         dst = self._p(key)
@@ -62,10 +62,10 @@ class LocalStore:
     def put_text(self, key: str, text: str) -> None:
         dst = self._p(key)
         dst.parent.mkdir(parents=True, exist_ok=True)
-        dst.write_text(text)
+        dst.write_text(text, encoding="utf-8")
 
     def get_text(self, key: str) -> str:
-        return self._p(key).read_text()
+        return self._p(key).read_text(encoding="utf-8")
 
 
 class S3Store:

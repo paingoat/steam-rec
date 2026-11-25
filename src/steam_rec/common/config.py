@@ -91,7 +91,7 @@ def deep_merge(a: dict, b: dict) -> dict:
 
 
 def _read(path: Path) -> dict:
-    return yaml.safe_load(path.read_text()) or {} if path.exists() else {}
+    return yaml.safe_load(path.read_text(encoding="utf-8")) or {} if path.exists() else {}
 
 
 def load_config(env: str = "local", scale: str = "smoke", overrides: dict | None = None,
@@ -112,7 +112,7 @@ def load_dotenv(path: Path | None = None) -> None:
     path = path or REPO_ROOT / ".env"
     if not path.exists():
         return
-    for line in path.read_text().splitlines():
+    for line in path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if line and not line.startswith("#") and "=" in line:
             k, v = line.split("=", 1)
