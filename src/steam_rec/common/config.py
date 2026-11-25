@@ -49,8 +49,14 @@ class EvalCfg(BaseModel):
     max_eval_users: int = 100_000
 
 
+class SplitCfg(BaseModel):
+    """Global temporal cut-offs (ISO dates). Chosen by the owner from reports/eda_time_split.md."""
+    t_val: str | None = None
+    t_test: str | None = None
+
+
 class GoldCfg(BaseModel):
-    min_user_pos: int = 3
+    min_user_pos: int = 3  # k-core on TRAIN positives only
     min_item_pos: int = 5
     kcore_max_rounds: int = 8
     negatives: Literal["mask", "drop"] = "mask"
@@ -64,6 +70,7 @@ class Config(BaseModel):
     spark: SparkCfg = SparkCfg()
     scale: ScaleCfg = ScaleCfg()
     eval: EvalCfg = EvalCfg()
+    split: SplitCfg = SplitCfg()
     gold: GoldCfg = GoldCfg()
     model: dict[str, Any] = Field(default_factory=dict)
 

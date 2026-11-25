@@ -21,18 +21,14 @@ OUT_SCHEMA = StructType([
 ])
 
 
-def user_inputs(ctx: Ctx, users: DataFrame, cutoff: str) -> DataFrame:
-    """users: user_idx (+ <cutoff>_date, <cutoff>_review_id when cutoff in {val,test}).
-    mask = items interacted strictly before the target (or all history when cutoff='all').
-    hist = train positives with confidence (model input; identical for every model)."""
-    hist = ctx.read(ctx.gold("history"))
-    if cutoff in ("val", "test"):
-        d, r = F.col(f"{cutoff}_date"), F.col(f"{cutoff}_review_id")
-        before = (F.col("date") < d) | ((F.col("date") == d) & (F.col("review_id") < r))
-        masked = hist.join(users.select("user_idx", d, r), "user_idx").filter(before)
-    else:
-        masked = hist.join(users.select("user_idx"), "user_idx")
-    mask = masked.groupBy("user_idx").agg(F.collect_set("item_idx").alias("mask"))
+def user_inputs(ctx: Ctx, users: DataFrame, cutoff_date: str | None) -> DataFrame:
+    """users: user_idx. Global temporal split -> one cut-off for everybody.
+    mask = items the user reviewed (pos + neg) with date < cutoff_date (all history when cutoff_date is None).
+    hist = train positives with confidence (model input; identical for every model, fit once on train)."""
+    hist = ctx.read(ctx.gold("history")).join(users.select("user_idx"), "user_idx")
+    if cutoff_date is not None:
+        hist = hist.filter(F.col("date") < F.lit(cutoff_date).cast("date"))
+    mask = hist.groupBy("user_idx").agg(F.collect_set("item_idx").alias("mask"))
     train = (ctx.read(ctx.gold("interactions")).filter("split = 'train'")
              .join(users.select("user_idx"), "user_idx")
              .groupBy("user_idx").agg(F.collect_list("item_idx").alias("hist_items"),

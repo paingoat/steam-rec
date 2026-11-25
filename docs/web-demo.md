@@ -45,6 +45,7 @@ cfg = load_config("demo")
 demo = Demo(cfg, get_store(cfg), run_id=None, k=10)   # k cố định theo instance
 
 demo.for_user(11442391, model="als")      # model: "als" | "cb" | "popularity"; mỗi lần gọi ~40 ms
+demo.for_user(123, exclude_app_ids=[730, 570])  # user lạ: fallback popularity bỏ các game user đã review
 demo.for_new_user(["RPG", "Open World"])  # cold-start theo tag
 ```
 
@@ -52,11 +53,15 @@ Output là `dict`:
 
 | key | có khi | ý nghĩa |
 |---|---|---|
-| `mode` | luôn có | `precomputed:<model>`, `fallback:popularity (...)` (user không có top-K), `cold-start:tags`, `fallback:popularity (no known tags)` |
+| `mode` | luôn có | `precomputed:<model>`, `fallback:popularity (history-masked)` (user không có top-K, đã loại `exclude_app_ids`), `fallback:popularity (no history)` (user hoàn toàn mới), `cold-start:tags`, `fallback:popularity (no known tags)` |
 | `items` | luôn có | list gồm `rank, app_id, title, score, rating, tags (≤5), source` (`source` có thể là `popularity-backfill` khi CB thiếu item) |
 | `user_id` | `for_user` | |
 | `run_id` | `for_user` có top-K | |
 | `unknown_tags` | `cold-start:tags` | những tag không có trong vocab |
+
+`exclude_app_ids` (tùy chọn): danh sách `app_id` user đã review/sở hữu mà web biết (ví dụ lịch sử tương tác trên web).
+Top-K precomputed đã tự mask toàn bộ lịch sử của user trong dataset; với user **không** có top-K, demo không có lịch sử
+của họ, nên web cần truyền `exclude_app_ids` để fallback không gợi ý lại game đã review. CLI: `--exclude 730,570`.
 
 Dữ liệu tham chiếu có sẵn trên object (chỉ đọc):
 - `demo.known`: tập 102 000 `user_id` có top-K precomputed (dùng để gợi ý user mẫu hoặc autocomplete). Ví dụ: `511`, `615`, `731`, `11442391`.

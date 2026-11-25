@@ -1,2 +1,1 @@
-# Count of train positives per item.
-recent_days: null    # null = all train history
+# Count of train positives per item (no parameters; train split only).

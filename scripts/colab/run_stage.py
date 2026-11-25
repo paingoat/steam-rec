@@ -1,7 +1,8 @@
 # Runs INSIDE the Colab kernel (foreground!) via:
 #   colab exec -s steam-rec-mvp --timeout 5400 --env STAGES=silver,gold --env SCALE=full --env RUN_ID=<id> \
 #       -f scripts/colab/run_stage.py
-# Env: STAGES (comma list incl. 'ingest', 'export'), SCALE, RUN_ID (required except for ingest).
+# Env: STAGES (comma list incl. 'ingest', 'game-meta', 'steamspy', 'eda-time', 'export'), SCALE,
+#      RUN_ID (required except for ingest/game-meta/steamspy/eda-time).
 # Each stage: restore lake from Drive (if VM was reset) -> run (skips if done) -> mirror lake to Drive.
 import json
 import os
@@ -26,8 +27,9 @@ RUN_ID = os.environ.get("RUN_ID", "")
 cfg = load_config("colab", SCALE)
 LAKE = Path(cfg.storage.local_root)
 DRIVE = Path(cfg.storage.checkpoint_root)
-if not DRIVE.parent.exists():
-    raise SystemExit(f"Drive not mounted ({DRIVE.parent}). Ask the user to run: colab drivemount -s <session>")
+if not Path("/content/drive/MyDrive").is_dir():
+    raise SystemExit("Drive not mounted (/content/drive/MyDrive). Ask the user to run: colab-as <profile> drivemount -s <session>")
+DRIVE.mkdir(parents=True, exist_ok=True)  # a fresh account has no Research/steam-rec folder yet
 
 # size Spark to the VM (≈70% RAM for the driver in local[*] mode)
 ram_gb = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES") / 1e9
@@ -70,6 +72,39 @@ for stage in STAGES:
         if bad:
             raise SystemExit(f"Bronze on Colab differs from local Bronze: {bad}")
         LOG.info("✅ Colab Bronze matches local manifest (sha256) for %s", [f["name"] for f in m["files"]])
+        continue
+    if stage == "game-meta":
+        # small enrichment Bronze built locally (steam-rec ingest-meta), uploaded as /content/game_meta.tgz
+        import tarfile
+
+        with tarfile.open("/content/game_meta.tgz") as t:
+            t.extractall(LAKE / "bronze", filter="data")
+        LOG.info("game_meta bronze: %s", sorted(p.name for p in (LAKE / "bronze" / "game_meta").iterdir()))
+        continue
+    if stage == "steamspy":
+        # finish SteamSpy tags on the VM (fast network); resumes from the uploaded local cache
+        import shutil
+
+        from steam_rec.ingestion.game_meta import ingest_meta
+        from steam_rec.storage.store import get_store
+
+        cache = cfg.resolve_path(cfg.storage.staging_dir) / "steamspy_cache.jsonl"
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        if Path("/content/steamspy_cache.jsonl").exists() and not cache.exists():
+            shutil.copy("/content/steamspy_cache.jsonl", cache)
+        res = ingest_meta(cfg, get_store(cfg), skip_hf=True)
+        shutil.copy(cache, "/content/steamspy_cache.jsonl")
+        mirror(LAKE / "bronze" / "game_meta", DRIVE / "bronze_game_meta")
+        print(json.dumps({"stage": "steamspy", **res}))
+        continue
+    if stage == "eda-time":
+        from steam_rec.pipelines.eda_time import run_eda_time
+        from steam_rec.storage.store import get_store
+
+        out = Path("/content/export/eda")
+        rep = run_eda_time(cfg, get_store(cfg), out_dir=out)
+        mirror(out, DRIVE / "eda")
+        print(json.dumps({"stage": "eda-time", "candidates": len(rep["candidates"]), "out": str(out)}))
         continue
     if not RUN_ID:
         raise SystemExit("RUN_ID env is required for pipeline stages")

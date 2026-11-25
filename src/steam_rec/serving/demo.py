@@ -71,15 +71,24 @@ class Demo:
         order = np.argsort(-self.pop)
         return [(int(i), float(self.pop[i])) for i in order if int(i) not in exclude][: self.k]
 
-    def for_user(self, user_id: int, model: str = "als") -> dict:
+    def _app_to_idx(self, app_ids) -> set[int]:
+        a2i = dict(zip(self.catalog["app_id"].astype(int), self.catalog.index.astype(int), strict=True))
+        return {a2i[int(a)] for a in app_ids if int(a) in a2i}
+
+    def for_user(self, user_id: int, model: str = "als", exclude_app_ids=None) -> dict:
+        """exclude_app_ids: games the caller knows the user already reviewed/owns (e.g. from the web app's own history).
+        Precomputed top-K already masks the user's full history; the fallback paths mask exclude_app_ids."""
+        exclude = self._app_to_idx(exclude_app_ids or [])
         if user_id not in self.known:
-            ids, sc = zip(*self.popular(), strict=True)
-            return {"user_id": user_id, "mode": "fallback:popularity (user has no precomputed top-K)",
-                    "items": self._rows(list(ids), list(sc), "popularity")}
+            ids, sc = zip(*self.popular(exclude), strict=True)
+            mode = "fallback:popularity (history-masked)" if exclude else "fallback:popularity (no history)"
+            return {"user_id": user_id, "mode": mode, "items": self._rows(list(ids), list(sc), "popularity")}
         t = self.topk.filter(pc.and_(pc.equal(self.topk["user_id"], user_id), pc.equal(self.topk["model"], model)))
         t = t.sort_by("rank").to_pandas().head(self.k)
         app2idx = {int(a): int(i) for i, a in self.catalog["app_id"].items()}
-        idx, sc, src = [app2idx[int(a)] for a in t.app_id], list(t.score), [model] * len(t)
+        rows = [(app2idx[int(a)], float(s)) for a, s in zip(t.app_id, t.score, strict=True)
+                if app2idx[int(a)] not in exclude]
+        idx, sc, src = [i for i, _ in rows], [s for _, s in rows], [model] * len(rows)
         if len(idx) < self.k:
             # CB can be short when the user's history items lack tags/description -> backfill from this user's
             # precomputed popularity list (already masks everything the user has reviewed)
@@ -88,7 +97,7 @@ class Demo:
             for a, s in zip(p.app_id, p.score, strict=True):
                 if len(idx) >= self.k:
                     break
-                if app2idx[int(a)] not in idx:
+                if app2idx[int(a)] not in idx and app2idx[int(a)] not in exclude:
                     idx.append(app2idx[int(a)])
                     sc.append(float(s))
                     src.append("popularity-backfill")

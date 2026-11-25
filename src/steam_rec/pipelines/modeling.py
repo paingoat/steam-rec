@@ -30,10 +30,18 @@ def _kmax(ctx: Ctx) -> int:
     return max(ctx.cfg.eval.k_values)
 
 
-def _eval(ctx: Ctx, inputs, kind, state, target_col: str, n_items: int) -> dict:
+def _targets(ctx: Ctx, split: str):
+    return ctx.read(ctx.gold("eval_targets")).filter(F.col("split") == split).select("user_idx", "items")
+
+
+def _cutoff(ctx: Ctx, split: str) -> str:
+    return ctx.cfg.split.t_val if split == "val" else ctx.cfg.split.t_test
+
+
+def _eval(ctx: Ctx, inputs, kind, state, split: str, n_items: int) -> dict:
     recs = topk(inputs, kind, state, _kmax(ctx))
-    tgt = ctx.read(ctx.gold("eval_targets")).select("user_idx", target_col)
-    return spark_metrics(recs.join(tgt, "user_idx"), target_col, ctx.cfg.eval.k_values, n_items)
+    tgt = _targets(ctx, split).withColumnRenamed("items", "targets")
+    return spark_metrics(recs.join(tgt, "user_idx"), "targets", ctx.cfg.eval.k_values, n_items)
 
 
 def _grid(g: dict) -> list[dict]:
@@ -53,14 +61,13 @@ def run_train(ctx: Ctx) -> dict:
     primary = PRIMARY.format(k=k)
     trial = lambda name: ctx.art("models", "trials", f"{name}.json")
     have = lambda name: ctx.store.exists(trial(name))
-    targets = ctx.read(ctx.gold("eval_targets"))
-    inp = user_inputs(ctx, targets, "val").checkpoint(eager=True)
+    inp = user_inputs(ctx, _targets(ctx, "val"), _cutoff(ctx, "val")).checkpoint(eager=True)
 
     if not have("popularity"):
         with phase("train.popularity"):
             pop = fit_popularity(ctx, n_items)
             put_npy(ctx.store, ctx.art("models", "popularity.npy"), pop)
-            ctx.put_json(trial("popularity"), [{"params": {}, "val": _eval(ctx, inp, "pop", pop, "val_item", n_items)}])
+            ctx.put_json(trial("popularity"), [{"params": {}, "val": _eval(ctx, inp, "pop", pop, "val", n_items)}])
 
     if not have("cb"):
         with phase("train.cb"):
@@ -71,7 +78,7 @@ def run_train(ctx: Ctx) -> dict:
                 w_desc = float(params.get("w_desc", cbp["w_desc"]))
                 s = cb_tfidf.item_knn(cb_tfidf.combine(feats["X_tag"], feats["X_desc"], float(cbp["w_tag"]), w_desc),
                                       int(cbp["neighbors"]))
-                met = _eval(ctx, inp, "cb", s, "val_item", n_items)
+                met = _eval(ctx, inp, "cb", s, "val", n_items)
                 rows.append({"params": {"w_tag": float(cbp["w_tag"]), "w_desc": w_desc,
                                         "neighbors": int(cbp["neighbors"])}, "val": met})
                 LOG.info("cb w_desc=%s %s", w_desc, met)
@@ -96,7 +103,7 @@ def run_train(ctx: Ctx) -> dict:
         with phase("train.als.fit", **params):
             model = als_m.fit_als(ctx, params)
         met = _eval(ctx, als_m.with_user_factors(inp, model), "als",
-                    als_m.item_factors(model, n_items), "val_item", n_items)
+                    als_m.item_factors(model, n_items), "val", n_items)
         LOG.info("als %s %s", params, met)
         model.write().overwrite().save(ctx.uri(ctx.art("models", "als_trials", key)))
         ctx.put_json(trial(key), [{"params": params, "val": met, "model": key}])
@@ -120,19 +127,18 @@ def run_train(ctx: Ctx) -> dict:
 
 
 def run_evaluate(ctx: Ctx) -> dict:
-    """Test split, evaluated exactly once with the configs selected on validation."""
+    """Test window, evaluated exactly once with the configs selected on validation (model fit once on train)."""
     n_items = _n_items(ctx)
-    targets = ctx.read(ctx.gold("eval_targets"))
-    inp = user_inputs(ctx, targets, "test").checkpoint(eager=True)
+    inp = user_inputs(ctx, _targets(ctx, "test"), _cutoff(ctx, "test")).checkpoint(eager=True)
     out = {}
     with phase("evaluate.test"):
         out["popularity"] = _eval(ctx, inp, "pop", get_npy(ctx.store, ctx.art("models", "popularity.npy")),
-                                  "test_item", n_items)
+                                  "test", n_items)
         out["cb"] = _eval(ctx, inp, "cb", get_npz(ctx.store, ctx.art("models", "cb_item_knn.npz")),
-                          "test_item", n_items)
+                          "test", n_items)
         model = ALSModel.load(ctx.uri(ctx.art("models", "als")))
         out["als"] = _eval(ctx, als_m.with_user_factors(inp, model), "als",
-                           get_npy(ctx.store, ctx.art("models", "als_item_factors.npy")), "test_item", n_items)
+                           get_npy(ctx.store, ctx.art("models", "als_item_factors.npy")), "test", n_items)
     out["_selection"] = ctx.get_json(ctx.art("models", "selection.json"))
     ctx.put_json(ctx.art("metrics", "test.json"), out)
     for m in ("popularity", "cb", "als"):
@@ -144,7 +150,7 @@ def run_recommend(ctx: Ctx) -> dict:
     """Precompute top-K (all history masked) for eval + demo users, for every model -> recommendations_topk."""
     users = (ctx.read(ctx.gold("eval_targets")).select("user_idx")
              .unionByName(ctx.read(ctx.gold("demo_users"))).distinct())
-    inp = user_inputs(ctx, users, "all").checkpoint(eager=True)
+    inp = user_inputs(ctx, users, None).checkpoint(eager=True)
     model = ALSModel.load(ctx.uri(ctx.art("models", "als")))
     parts = {
         "popularity": topk(inp, "pop", get_npy(ctx.store, ctx.art("models", "popularity.npy")), TOPK_EXPORT),

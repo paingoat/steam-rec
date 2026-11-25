@@ -50,6 +50,18 @@ def ingest_cmd(env: str = EnvOpt, raw_dir: str = typer.Option(None, help="use al
     typer.echo(json.dumps({"ingest_run_id": m["ingest_run_id"], "files": [(f["name"], f["size"]) for f in m["files"]]}))
 
 
+@app.command("ingest-meta")
+def ingest_meta_cmd(env: str = EnvOpt, skip_steamspy: bool = typer.Option(False, "--skip-steamspy"),
+                    skip_hf: bool = typer.Option(False, "--skip-hf", help="keep the published HF snapshot"),
+                    limit: int = typer.Option(None, "--limit", help="max SteamSpy calls (testing)")) -> None:
+    """Enrich game metadata: HF FronkonGames (desc/genres/categories) + SteamSpy tags -> Bronze game_meta."""
+    from steam_rec.ingestion.game_meta import ingest_meta
+    from steam_rec.storage.store import get_store
+
+    cfg = load_config(env)
+    typer.echo(json.dumps(ingest_meta(cfg, get_store(cfg), skip_steamspy, limit, skip_hf)))
+
+
 @app.command("eda")
 def eda_cmd(env: str = EnvOpt, scale: str = typer.Option("full", "--scale")) -> None:
     """M3: EDA over the latest Bronze snapshot -> reports/eda/eda_summary.json"""
@@ -59,6 +71,17 @@ def eda_cmd(env: str = EnvOpt, scale: str = typer.Option("full", "--scale")) -> 
     cfg = load_config(env, scale)
     rep = run_eda(cfg, get_store(cfg))
     typer.echo(json.dumps(rep["rows"]))
+
+
+@app.command("eda-time")
+def eda_time_cmd(env: str = EnvOpt, scale: str = typer.Option("full", "--scale")) -> None:
+    """EDA for the global temporal split: stats per (T_val, T_test) candidate -> reports/eda/eda_time_split.json"""
+    from steam_rec.pipelines.eda_time import run_eda_time
+    from steam_rec.storage.store import get_store
+
+    cfg = load_config(env, scale)
+    rep = run_eda_time(cfg, get_store(cfg))
+    typer.echo(json.dumps([{k: c[k] for k in ("t_val", "t_test", "core_users")} for c in rep["candidates"]]))
 
 
 STAGES = ["silver", "gold", "train", "evaluate", "recommend"]
@@ -108,6 +131,7 @@ def demo_cmd(
     user_id: int = typer.Option(None, "--user-id"),
     tags: str = typer.Option(None, "--tags", help="cold-start: comma-separated tags, e.g. 'RPG,Indie'"),
     model: str = typer.Option("als", "--model", help="als | cb | popularity"),
+    exclude: str = typer.Option(None, "--exclude", help="comma-separated app_ids the user already reviewed"),
     k: int = typer.Option(10, "-k"),
     run_id: str = typer.Option(None, "--run-id"),
     env: str = EnvOpt,
@@ -121,7 +145,8 @@ def demo_cmd(
     d = Demo(cfg, get_store(cfg), run_id, k)
     if user_id is None and not tags:
         raise typer.BadParameter("give --user-id or --tags")
-    res = d.for_user(user_id, model) if user_id is not None else d.for_new_user(tags.split(","))
+    excl = [int(a) for a in exclude.split(",") if a.strip()] if exclude else None
+    res = d.for_user(user_id, model, excl) if user_id is not None else d.for_new_user(tags.split(","))
     typer.echo(json.dumps(res, default=str, ensure_ascii=False, indent=2) if as_json else pretty(res))
 
 
