@@ -29,6 +29,9 @@ Header của cả 3 file CSV khớp đúng `steam_rec.common.schemas`. Không c�
 ### Định nghĩa feedback (đề xuất)
 - **Positive** = `is_recommended = true` (85.8% số review).
 - **Confidence** = `1 + log1p(hours)`. Nguồn đã cap hours ở 1000, nên không cần cap thêm. `alpha` của ALS được tune riêng.
+- **Giả định về `hours` (chốt 2026-11-25):** coi `hours` là số giờ chơi **tại thời điểm viết review** và dùng như tín hiệu tin cậy.
+  Caveat đã biết: khoảng 2% review có `hours` > 24 giờ × số ngày từ ngày phát hành, tức một phần dữ liệu giống giờ chơi lúc crawl.
+  Sẽ xem lại khi có `playtime_at_review` từ Steam API (backlog).
 - **Negative review** không đưa vào ALS (implicit ALS không mô hình hóa được "ghét"). Chúng vẫn được giữ để:
   (a) mask khỏi candidate (không gợi ý lại game user đã review), (b) phân tích riêng.
   Ablation qua config: `negatives: mask | drop`.
@@ -55,14 +58,19 @@ Ngưỡng là config (`gold.min_user_pos`, `gold.min_item_pos`). Bảng này đo
 nên chỉ dùng để định hướng. Gold sẽ tính lại trên train.
 
 ### Bảng Gold
+Tên bảng và cột dưới đây khớp với code (`src/steam_rec/pipelines/gold.py`, `pipelines/modeling.py`).
+
 | Bảng | Cột |
 |---|---|
 | `id_map_users` / `id_map_items` | `user_id`/`app_id` → `user_idx`/`item_idx` INT liên tục (ALS yêu cầu INT) |
-| `interactions` | user_idx, item_idx, user_id, app_id, date, review_id, is_recommended, hours, confidence, split ∈ {train, val, test} |
-| `seen` | user_idx, item_idx: mọi review, kể cả negative và kể cả train/val, dùng để mask candidate |
-| `cb_game_features` | item_idx, app_id, features (SparseVector, L2-normalized): TF-IDF của tags (w_tag) ⊕ description (w_desc) |
-| `eval_users` | user_idx, sample tất định (seed) tối đa `eval.max_eval_users`, dùng chung cho mọi model |
-| `recommendations_topk` | user_id, app_id, rank, score, model, run_id (+ title, tags khi xuất demo) |
+| `interactions` | user_idx, item_idx, user_id, app_id, date, review_id, hours, confidence, split ∈ {train, val, test} (chỉ positive) |
+| `history` | user_idx, item_idx, date, review_id, is_recommended: mọi review (cả negative khi `negatives: mask`) trên user/item của id map; chỉ dùng để mask candidate theo thời điểm |
+| `eval_targets` | user eval (sample tất định theo seed, tối đa `eval.max_eval_users`) và target val/test, dùng chung cho mọi model |
+| `demo_users` | user_idx: user ngoài eval được precompute top-K cho demo |
+| `artifacts/<run_id>/topk` | user_id, app_id, rank, score, model, run_id (kèm `catalog`, `topk_users` cho demo) |
+
+Vector CB (TF-IDF tags ⊕ description) không lưu thành bảng Gold. Chúng được tính trong stage train và lưu ở
+`artifacts/<run_id>/models/` (`cb_item_knn.npz`, `cb_x_tag.npz`, `cb_tag_idf.npy`, `cb_tag_vocab.json`).
 
 ### Metric
 Recall@K và NDCG@K (K = 10, 20) với 1 item test cho mỗi user, catalog coverage@K, và eligible-user coverage

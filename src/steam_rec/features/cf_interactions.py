@@ -7,7 +7,10 @@ from steam_rec.common.logging import LOG
 
 
 def confidence(hours_col: str = "hours") -> Column:
-    """Implicit-feedback confidence weight; ALS alpha scales it further. Source caps hours at 1000."""
+    """Implicit-feedback confidence weight; ALS alpha scales it further. Source caps hours at 1000.
+
+    Project assumption (decided 2026-11-25): `hours` = playtime at the time of the review, treated as reliable.
+    Known caveat: part of the data looks like playtime at crawl time (see .claude/context backlog / data-contracts)."""
     return (F.lit(1.0) + F.log1p(F.greatest(F.col(hours_col), F.lit(0.0)))).cast("float")
 
 

@@ -26,6 +26,11 @@ def dedup_user_app(recs: DataFrame) -> DataFrame:
     return recs.withColumn("_rn", F.row_number().over(w)).filter("_rn = 1").drop("_rn")
 
 
+def orphan_keys(df: DataFrame, ref: DataFrame, key: str) -> int:
+    """Distinct `key` values of df that do not exist in ref (foreign-key violations)."""
+    return df.select(key).distinct().join(ref.select(key), key, "left_anti").count()
+
+
 def run_silver(ctx: Ctx) -> dict:
     cfg, spark = ctx.cfg, ctx.spark
     man = bronze_manifest(cfg, ctx.store)
@@ -63,8 +68,10 @@ def run_silver(ctx: Ctx) -> dict:
         neg = recs.filter("hours < 0").count()
         dq.check("recs.hours_non_negative", neg, neg == 0)
         dq.check("recs.hours_le_1000", recs.filter("hours > 1000").count(), True, "warn")
-        orphan = recs.select("app_id").distinct().join(games.select("app_id"), "app_id", "left_anti").count()
+        orphan = orphan_keys(recs, games, "app_id")
         dq.check("recs.fk_app_id", orphan, orphan == 0)
+        orphan_u = orphan_keys(recs, raw["users"], "user_id")  # against the full Bronze users table
+        dq.check("recs.fk_user_id", orphan_u, orphan_u == 0)
         recs = dedup_user_app(recs)
         n_out = recs.count()
         dq.check("recs.dedup_removed", n_in - n_out, True, "warn")

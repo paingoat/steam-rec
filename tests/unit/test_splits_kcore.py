@@ -50,3 +50,12 @@ def test_sample_users_keeps_whole_histories(spark):
     per_user = {r.user_id: r["count"] for r in s.groupBy("user_id").count().collect()}
     assert all(c == 10 for c in per_user.values()) and 20 < len(per_user) < 100
     assert s.count() == sample_users(df, 0.3, 42).count()  # deterministic
+
+
+def test_orphan_keys_detects_missing_users(spark):
+    from steam_rec.pipelines.silver import orphan_keys
+
+    recs = spark.createDataFrame([(1, 10), (2, 10), (3, 11), (3, 12)], "user_id long, app_id int")
+    users = spark.createDataFrame([(1,), (2,)], "user_id long")
+    assert orphan_keys(recs, users, "user_id") == 1
+    assert orphan_keys(recs.filter("user_id < 3"), users, "user_id") == 0

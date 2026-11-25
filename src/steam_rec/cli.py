@@ -108,6 +108,7 @@ def demo_cmd(
     user_id: int = typer.Option(None, "--user-id"),
     tags: str = typer.Option(None, "--tags", help="cold-start: comma-separated tags, e.g. 'RPG,Indie'"),
     model: str = typer.Option("als", "--model", help="als | cb | popularity"),
+    exclude: str = typer.Option(None, "--exclude", help="comma-separated app_ids the user already reviewed"),
     k: int = typer.Option(10, "-k"),
     run_id: str = typer.Option(None, "--run-id"),
     env: str = EnvOpt,
@@ -121,7 +122,8 @@ def demo_cmd(
     d = Demo(cfg, get_store(cfg), run_id, k)
     if user_id is None and not tags:
         raise typer.BadParameter("give --user-id or --tags")
-    res = d.for_user(user_id, model) if user_id is not None else d.for_new_user(tags.split(","))
+    excl = [int(a) for a in exclude.split(",") if a.strip()] if exclude else None
+    res = d.for_user(user_id, model, excl) if user_id is not None else d.for_new_user(tags.split(","))
     typer.echo(json.dumps(res, default=str, ensure_ascii=False, indent=2) if as_json else pretty(res))
 
 
