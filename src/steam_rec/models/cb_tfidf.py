@@ -30,15 +30,28 @@ def _to_csr(rows, n_items: int, dim: int) -> sparse.csr_matrix:
     return sparse.csr_matrix((np.asarray(v, np.float32), (r, c)), shape=(n_items, dim))
 
 
+def _tok(col, prefix: str = ""):
+    return F.transform(F.coalesce(col, F.array().cast("array<string>")),
+                       lambda t: F.concat(F.lit(prefix), F.regexp_replace(F.lower(F.trim(t)), r"[^a-z0-9]+", "_")))
+
+
+def tag_tokens(cat, extra_fields: list[str]):
+    """Community tags + optional enrichment lists as prefixed tokens (genres -> g_<x>, categories -> c_<x>), so
+    e.g. genre 'Action' and tag 'Action' stay separate features. Missing columns (v1 catalogs) are skipped."""
+    parts = [_tok(F.col("tags"))]
+    for f in extra_fields:
+        if f in cat.columns:
+            parts.append(_tok(F.col(f), f"{f[0]}_"))
+    return F.array_distinct(F.concat(*parts)) if len(parts) > 1 else parts[0]
+
+
 def build_item_features(ctx: Ctx, n_items: int) -> dict:
     """Returns {'X_tag', 'X_desc' (L2-normalized CSR, rows = item_idx), 'tag_vocab', 'tag_idf'}."""
     p = ctx.cfg.model["cb"]
     items = ctx.read(ctx.gold("id_map_items"))
-    cat = ctx.read(ctx.silver("game_catalog")).join(items, "app_id").select(
-        "item_idx",
-        F.transform("tags", lambda t: F.regexp_replace(F.lower(F.trim(t)), r"[^a-z0-9]+", "_")).alias("tag_tok"),
-        F.coalesce("description", F.lit("")).alias("description"),
-    )
+    cat = ctx.read(ctx.silver("game_catalog")).join(items, "app_id")
+    cat = cat.select("item_idx", tag_tokens(cat, p.get("extra_fields", [])).alias("tag_tok"),
+                     F.coalesce("description", F.lit("")).alias("description"))
     tag_cv = CountVectorizer(inputCol="tag_tok", outputCol="tag_tf", vocabSize=int(p["tag_vocab"]), binary=True)
     tag_model = tag_cv.fit(cat)
     df = tag_model.transform(cat)

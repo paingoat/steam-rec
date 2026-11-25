@@ -3,6 +3,7 @@ tag_vocab: 1000
 desc_vocab: 20000
 desc_min_df: 5
 w_tag: 1.0
+extra_fields: [genres, categories]   # enrichment lists added as prefixed tag tokens (g_, c_)
 w_desc: 0.3
 neighbors: 100
 grid:

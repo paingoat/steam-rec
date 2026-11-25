@@ -15,6 +15,7 @@ dependencies = [
   "pyarrow>=18",
   "pandas>=2.2",
   "matplotlib>=3.9",
+  "duckdb>=2.0.1",
 ]
 
 [project.scripts]
