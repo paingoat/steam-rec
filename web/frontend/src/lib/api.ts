@@ -6,7 +6,8 @@ import type { GameDetail, Model, RecResult, UserCheck } from "./types";
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 export const USING_MOCK = !API_URL;
 
-export const SAMPLE_USERS = [511, 615, 731, 11442391];
+// User có top-K ở run v2 (20261125T045027Z-dbf308a-v2full). Khi có backend, login lấy từ /api/health (known_sample).
+export const SAMPLE_USERS = [378, 671, 694, 856];
 export const MODELS: Model[] = ["als", "cb", "popularity"];
 
 export function parseModel(raw: unknown): Model {
@@ -17,6 +18,17 @@ async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`API ${path} -> ${res.status}`);
   return res.json() as Promise<T>;
+}
+
+// User mẫu cho trang login: lấy từ run đang chạy để không lệch khi đổi run
+export async function getSampleUsers(): Promise<number[]> {
+  if (!API_URL) return SAMPLE_USERS;
+  try {
+    const h = await get<{ known_sample?: number[] }>("/api/health");
+    return h.known_sample?.length ? h.known_sample : SAMPLE_USERS;
+  } catch {
+    return SAMPLE_USERS;
+  }
 }
 
 export async function checkUser(userId: number): Promise<UserCheck> {
@@ -51,7 +63,15 @@ export async function recommendByTags(tags: string[]): Promise<RecResult> {
   return get<RecResult>(`/api/recommend/tags?${tags.map((t) => `tags=${encodeURIComponent(t)}`).join("&")}`);
 }
 
-// demo.tag_vocab: tag đã chuẩn hóa (lowercase, "_" thay space/"-")
+// Genre của Steam (token "g_action"...). Gửi lại nguyên dạng qua recommendByTags như tag thường.
+export async function getGenres(): Promise<string[]> {
+  if (!API_URL) return MOCK_GENRES;
+  return get<string[]>("/api/genres");
+}
+
+const MOCK_GENRES = ["g_action", "g_adventure", "g_casual", "g_indie", "g_rpg", "g_simulation", "g_strategy"];
+
+// demo.tag_vocab không gồm token g_/c_: tag đã chuẩn hóa (lowercase, "_" thay space/"-")
 export async function getTags(): Promise<string[]> {
   if (!API_URL) {
     const all = mockCatalog().flatMap((g) => g.tags.map(normTag));
@@ -66,8 +86,9 @@ export function normTag(t: string): string {
 
 const UPPER = new Set(["rpg", "jrpg", "arpg", "crpg", "fps", "mmo", "mmorpg", "pvp", "pve", "vr", "rts", "moba", "2d", "3d", "4x"]);
 
-// "open_world" -> "Open World", "rpg" -> "RPG", "co_op" -> "Co-op" để hiển thị
+// "open_world" -> "Open World", "rpg" -> "RPG", "co_op" -> "Co-op", "g_action" -> "Action" để hiển thị
 export function prettyTag(t: string): string {
+  t = t.replace(/^[gc]_/, "");
   if (t === "co_op") return "Co-op";
   return t
     .split("_")

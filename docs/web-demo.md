@@ -3,7 +3,7 @@
 > Đọc file này trước khi làm phần web. Phần web là **tạm thời**: nó chỉ là một lớp vỏ quanh demo offline.
 > Thiết kế chính là pipeline batch trong `src/steam_rec/` (Bronze → Silver/Gold → model → top-K) và sẽ còn được scale tiếp.
 
-## Tình hình hiện tại (2026-11-22)
+## Tình hình hiện tại (2026-11-25)
 
 - Run full mới nhất (v2, 2026-11-25): `20261125T045027Z-dbf308a-v2full`. Run này dùng split theo mốc thời gian chung, metadata
   đã bổ sung (tags cho các game lớn như TF2, Witcher 3…), và gồm 3 model ALS rank 32, CB TF-IDF, popularity.
@@ -30,8 +30,10 @@ Luôn truyền `--env demo`. Nếu thiếu, env mặc định là `local`, sẽ 
 Khi có run mới trên HF, chạy lại `fetch_bundle.py`. `Demo` tự chọn run full mới nhất có trong lake; muốn cố định run
 thì truyền `run_id`.
 
-> **Windows:** cần đặt `PYTHONUTF8=1` trước mọi lệnh trên, và CLI phải có `--run-id <run_id>`. Nguyên nhân và cách
-> tránh xem mục "Known issues on Windows" trong `web/README.md`.
+> **Windows:** 2 lỗi cũ (đọc yaml sai encoding, `LocalStore.list` trả `\\` nên không tìm thấy run) đã sửa trong core v2,
+> không còn cần `PYTHONUTF8=1` hay `--run-id` (chưa xác nhận lại trên máy Windows). Xem "Known issues on Windows" trong `web/README.md`.
+
+Web demo (Next.js + FastAPI) nằm ở `web/`; cách chạy xem `web/README.md`.
 
 ## Dùng demo trong web
 
@@ -67,8 +69,11 @@ của họ, nên web cần truyền `exclude_app_ids` để fallback không gợ
 
 Dữ liệu tham chiếu có sẵn trên object (chỉ đọc):
 - `demo.known`: tập `user_id` có top-K precomputed (run v2: 180 362 user; run v1: 102 000), dùng để gợi ý user mẫu hoặc autocomplete. Ví dụ với run v2: `378`, `671`, `694`, `856`.
-- `demo.catalog`: DataFrame 32 692 game, index `item_idx`, các cột `app_id, title, rating, positive_ratio, price_final, tags`.
-- `demo.tag_vocab`: 441 tag đã chuẩn hóa (lowercase, `_` thay cho space/`-`), dùng cho UI chọn tag.
+- `demo.catalog`: DataFrame 30 715 game (run v2, các game trong train-core), index `item_idx`, các cột
+  `app_id, title, rating, positive_ratio, price_final, tags`. Chỉ 6 game không có tag (v1: nhiều game top như TF2, Witcher 3 có tag rỗng).
+- `demo.tag_vocab`: 546 token đã chuẩn hóa (lowercase, `_` thay cho space/`-`): 460 tag thường + 86 token genre `g_*` và
+  category `c_*` (CB v2 gộp genres/categories của Steam). `for_new_user` nhận cả `g_rpg`. Backend web trả tag thường ở
+  `/api/tags` và genre game ở `/api/genres` (bỏ `c_*` và genre phần mềm/nhãn nội dung).
 - Ảnh game: dùng URL công khai của Steam theo `app_id`, ví dụ
   `https://cdn.cloudflare.steamstatic.com/steam/apps/<app_id>/header.jpg` (không có trong bundle).
 

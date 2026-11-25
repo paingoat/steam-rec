@@ -70,6 +70,9 @@ export default function AboutPage() {
         Run <span className="font-mono">{RUN.id}</span> · {RUN.evalUsers.toLocaleString("en-US")} evaluation users ·{" "}
         {RUN.hardware}
       </p>
+      <p className="mt-1 text-[12px] text-muted">
+        Split: <span className="font-mono">{RUN.split}</span>
+      </p>
       <div className="mt-4 overflow-x-auto rounded-[4px] bg-bg-deep">
         <table className="w-full min-w-[720px] text-[13px]">
           <thead>

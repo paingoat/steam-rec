@@ -12,7 +12,7 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   const raw = String(formData.get("user_id") ?? "").trim();
   const id = Number(raw);
   if (!/^\d+$/.test(raw) || !Number.isSafeInteger(id) || id <= 0) {
-    return { error: "Please enter your numeric Steam account ID (e.g. 11442391)." };
+    return { error: "Please enter your numeric Steam account ID (e.g. 378)." };
   }
 
   // User chưa có top-K vẫn được vào: backend trả popularity chung (fallback),

@@ -15,7 +15,7 @@ function href(tags: string[]) {
 }
 
 // Sidebar "Filters" của Browse: tìm tag trong tag_vocab, bấm để thêm/bỏ (trạng thái nằm trên URL)
-export function TagFilter({ vocab, selected }: { vocab: string[]; selected: string[] }) {
+export function TagFilter({ vocab, genres, selected }: { vocab: string[]; genres: string[]; selected: string[] }) {
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase().replace(/[ -]/g, "_");
   const vocabSet = new Set(vocab);
@@ -57,6 +57,26 @@ export function TagFilter({ vocab, selected }: { vocab: string[]; selected: stri
         </div>
       )}
 
+      {genres.length > 0 && (
+        <>
+          <div className="mt-4 border-t border-border pt-3 text-[12px] text-muted">Genres</div>
+          <div className="mt-2 flex flex-wrap gap-1">
+            {genres.map((g) => {
+              const on = selected.includes(g);
+              return (
+                <Link
+                  key={g}
+                  href={toggle(g)}
+                  className={`rounded-[2px] px-2 py-0.5 text-[11px] ${on ? "bg-accent text-white" : "bg-surface text-muted hover:bg-surface-2 hover:text-text"}`}
+                >
+                  {prettyTag(g)}
+                </Link>
+              );
+            })}
+          </div>
+        </>
+      )}
+
       <div className="mt-4 border-t border-border pt-3 text-[12px] text-muted">
         {q ? `Tags matching "${query.trim()}"` : "Popular tags"}
       </div>
@@ -77,7 +97,7 @@ export function TagFilter({ vocab, selected }: { vocab: string[]; selected: stri
         })}
         {list.length === 0 && <li className="px-2 py-1.5 text-muted">No matching tag.</li>}
       </ul>
-      <p className="mt-3 text-[11px] text-muted">{vocab.length} tags available</p>
+      <p className="mt-3 text-[11px] text-muted">{vocab.length} tags · {genres.length} genres available</p>
     </aside>
   );
 }

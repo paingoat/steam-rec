@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { BrowseRow } from "@/components/BrowseRow";
 import { TagFilter } from "@/components/TagFilter";
-import { getTags, normTag, prettyTag, recommendByTags, searchGames, USING_MOCK } from "@/lib/api";
+import { getGenres, getTags, normTag, prettyTag, recommendByTags, searchGames, USING_MOCK } from "@/lib/api";
 
 export const metadata: Metadata = { title: "Browse" };
 
@@ -26,8 +26,9 @@ export default async function BrowsePage({ searchParams }: PageProps<"/browse">)
   const q = first(sp.q).trim();
   const selected = [...new Set(first(sp.tags).split(",").map(normTag).filter(Boolean))];
 
-  const [vocab, rec, found] = await Promise.all([
+  const [vocab, genres, rec, found] = await Promise.all([
     getTags(),
+    getGenres(),
     q ? null : recommendByTags(selected),
     q ? searchGames(q) : null,
   ]);
@@ -49,7 +50,7 @@ export default async function BrowsePage({ searchParams }: PageProps<"/browse">)
 
       <h2 className="mt-12 text-xl font-semibold">Browse by Tags</h2>
       <div className="mt-4 grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
-        <TagFilter vocab={vocab} selected={selected} />
+        <TagFilter vocab={vocab} genres={genres} selected={selected} />
 
         <div className="flex min-w-0 flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2 rounded-[4px] bg-bg-deep px-4 py-3 text-[13px]">

@@ -61,7 +61,7 @@ export function mockForUser(userId: number, model: Model, known: boolean): RecRe
   if (!known) {
     return {
       user_id: userId,
-      mode: "fallback:popularity (user has no precomputed top-K)",
+      mode: "fallback:popularity (no history)",
       items: items("popularity", "popularity"),
     };
   }

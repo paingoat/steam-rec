@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getSampleUsers } from "@/lib/api";
 import { getUserId } from "@/lib/session";
 import { LoginForm } from "./LoginForm";
 
@@ -14,6 +15,7 @@ const MENU = [
 
 export default async function LoginPage() {
   if ((await getUserId()) !== null) redirect("/discover");
+  const sampleUsers = await getSampleUsers();
 
   return (
     <div className="flex flex-1 flex-col bg-[linear-gradient(180deg,#2a475e_0%,#1b2838_420px)] font-[Arial,Helvetica,sans-serif]">
@@ -47,7 +49,7 @@ export default async function LoginPage() {
           </form>
         </nav>
 
-        <LoginForm />
+        <LoginForm sampleUsers={sampleUsers} />
       </div>
 
     </div>

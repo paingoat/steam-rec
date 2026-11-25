@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Literal
@@ -19,13 +18,18 @@ from fastapi.middleware.cors import CORSMiddleware
 K = int(os.environ.get("STEAM_REC_K", "10"))
 ORIGINS = os.environ.get("STEAM_REC_CORS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
 Model = Literal["als", "cb", "popularity"]
+NON_TAG_PREFIXES = ("g_", "c_")
+# Steam "genres" gồm cả loại phần mềm và nhãn nội dung; sidebar Genres chỉ giữ thể loại game
+NOT_GAME_GENRES = {"accounting", "animation_modeling", "audio_production", "design_illustration", "education",
+                   "game_development", "gore", "movie", "nudity", "photo_editing", "sexual_content",
+                   "software_training", "utilities", "video_production", "violent", "web_publishing"}
 
 state: dict = {}
 
 
 def find_run(lake: Path) -> str:
-    """Như serving.demo.latest_run nhưng đọc thẳng thư mục: latest_run tách key theo '/', trên Windows
-    LocalStore.list trả '\\' nên không thấy run nào. Ưu tiên run full mới nhất."""
+    """Như serving.demo.latest_run nhưng đọc thẳng thư mục. Trước v2, LocalStore.list trả '\\' trên Windows nên
+    latest_run không thấy run nào (đã sửa trong core, giữ hàm này làm dự phòng). Ưu tiên run full mới nhất."""
     runs = sorted(p.parent.parent.name for p in (lake / "artifacts").glob("*/stages/recommend.json"))
     if not runs:
         raise SystemExit(f"no run with a finished 'recommend' stage in {lake}; run scripts/demo/fetch_bundle.py")
@@ -38,11 +42,17 @@ def find_run(lake: Path) -> str:
     return (full or runs)[-1]
 
 
+def init(demo) -> None:
+    """Gắn một Demo đã tạo vào state (lifespan gọi hàm này; test gọi trực tiếp với lake giả)."""
+    vocab = list(demo.tag_vocab)
+    state.update(demo=demo, by_app={int(a): int(i) for i, a in demo.catalog["app_id"].items()},
+                 # v2: CB gộp genres (g_*) và categories (c_*) vào vocab tag; UI chỉ dùng tag thường + genres
+                 tags=[t for t in vocab if not t.startswith(NON_TAG_PREFIXES)],
+                 genres=sorted(t for t in vocab if t.startswith("g_") and t[2:] not in NOT_GAME_GENRES))
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    if sys.platform == "win32" and not sys.flags.utf8_mode:
-        # load_config đọc yaml (có comment tiếng Việt) bằng encoding mặc định của hệ điều hành
-        raise SystemExit("On Windows run with PYTHONUTF8=1 (see web/backend/README.md)")
     from steam_rec.common.config import load_config
     from steam_rec.serving.demo import Demo
     from steam_rec.storage.store import get_store
@@ -50,9 +60,7 @@ async def lifespan(_: FastAPI):
     cfg = load_config("demo")
     run_id = os.environ.get("STEAM_REC_RUN_ID") or find_run(cfg.resolve_path(cfg.storage.local_root))
     # k+1 để /similar còn đủ K sau khi bỏ chính game đó; các endpoint khác cắt còn K
-    demo = Demo(cfg, get_store(cfg), run_id=run_id, k=K + 1)
-    cat = demo.catalog
-    state.update(demo=demo, by_app={int(a): int(i) for i, a in cat["app_id"].items()})
+    init(Demo(cfg, get_store(cfg), run_id=run_id, k=K + 1))
     yield
     state.clear()
 
@@ -81,7 +89,8 @@ def finish(res: dict, exclude: int | None = None) -> dict:
 @app.get("/api/health")
 def health() -> dict:
     d = state["demo"]
-    return {"ok": True, "run_id": d.run_id, "games": len(d.catalog), "users": len(d.known), "k": K}
+    return {"ok": True, "run_id": d.run_id, "games": len(d.catalog), "users": len(d.known), "k": K,
+            "known_sample": sorted(d.known)[:4]}
 
 
 @app.get("/api/users/{user_id}")
@@ -96,8 +105,10 @@ def recommend_tags(tags: Annotated[list[str] | None, Query()] = None) -> dict:
 
 
 @app.get("/api/recommend/{user_id}")
-def recommend_user(user_id: int, model: Model = "als") -> dict:
-    return finish(state["demo"].for_user(user_id, model=model))
+def recommend_user(user_id: int, model: Model = "als",
+                   exclude: Annotated[list[int] | None, Query()] = None) -> dict:
+    """exclude: app_id user đã review/sở hữu mà web biết; fallback popularity sẽ bỏ các game này."""
+    return finish(state["demo"].for_user(user_id, model=model, exclude_app_ids=exclude))
 
 
 @app.get("/api/games")
@@ -125,4 +136,10 @@ def similar(app_id: int) -> dict:
 
 @app.get("/api/tags")
 def tags() -> list[str]:
-    return list(state["demo"].tag_vocab)
+    return state["tags"]
+
+
+@app.get("/api/genres")
+def genres() -> list[str]:
+    """Token genre của Steam (ví dụ g_action), gửi lại nguyên dạng qua /api/recommend/tags."""
+    return state["genres"]

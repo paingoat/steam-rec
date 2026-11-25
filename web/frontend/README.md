@@ -22,10 +22,10 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 | Route | What | Data |
 |---|---|---|
-| `/login` | Sign in with a numeric `user_id` (cookie `uid`, no password) | — |
+| `/login` | Sign in with a numeric `user_id` (cookie `uid`, no password); sample users of the current run | `GET /api/health` (`known_sample`) |
 | `/discover?model=als\|cb\|popularity` | Feature [1]: the user's precomputed top-K, model switch, `mode` badge, popularity fallback notice | `GET /api/recommend/{user_id}` |
 | `/game/[app_id]` | Game detail + **Similar Titles** (feature [2]: game tags → cold-start, game itself excluded) | `GET /api/games/{app_id}`, `GET /api/games/{app_id}/similar` |
-| `/browse?tags=a,b` / `/browse?q=` | Top categories, tag filter sidebar (cold-start by tags), title search | `GET /api/tags`, `GET /api/recommend/tags`, `GET /api/games?q=` |
+| `/browse?tags=a,b` / `/browse?q=` | Top categories, Genres + tag filter sidebar (cold-start by tags), title search | `GET /api/tags`, `GET /api/genres`, `GET /api/recommend/tags`, `GET /api/games?q=` |
 | `/about` | Dataset, pipeline, models, benchmark table (static, `src/lib/report.ts`) | — |
 
 `/discover` needs a session; the other pages are public.
@@ -42,7 +42,9 @@ All responses are JSON. Item lists follow `RecResult` / `RecItem` in `src/lib/ty
 | `GET /api/games/{app_id}` | `GameDetail` or 404 | row of `demo.catalog` by `app_id`, **all** tags |
 | `GET /api/games/{app_id}/similar` | `RecResult` | `for_new_user(game tags)` with k+1, drop the game itself, keep k |
 | `GET /api/games?q=` | `GameDetail[]` | case-insensitive title match on `demo.catalog`, limit ~20 |
-| `GET /api/tags` | `string[]` | `list(demo.tag_vocab)` (normalized: lowercase, `_`) |
+| `GET /api/tags` | `string[]` | `demo.tag_vocab` without `g_`/`c_` tokens (normalized: lowercase, `_`) |
+| `GET /api/genres` | `string[]` | `g_*` tokens of `demo.tag_vocab` (game genres only); sent back as tags |
+| `GET /api/health` | `{run_id, games, users, k, known_sample}` | `known_sample` = 4 users with a precomputed top-K |
 
 Every `RecItem` should also carry `price_final` and `positive_ratio` from `demo.catalog` (Demo itself does not return
 them); the UI hides them when missing. Enable CORS for the frontend origin. In FastAPI, declare

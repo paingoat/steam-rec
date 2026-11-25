@@ -50,7 +50,7 @@ uv run steam-rec import --bundle-dir data/inbox/<run_id>
 
 ## Demo offline
 ```bash
-uv run steam-rec demo --user-id 11442391 --model als     # als | cb | popularity
+uv run steam-rec demo --user-id 378 --model als          # als | cb | popularity (user có top-K ở run v2)
 uv run steam-rec demo --tags "RPG,Open World,Souls-like" # cold-start theo tag
 uv run steam-rec demo --user-id 1                        # user lạ -> fallback popularity
 ```
@@ -59,14 +59,22 @@ uv run steam-rec demo --user-id 1                        # user lạ -> fallback
 `paingoat/steam-rec-demo`, không cần token) vào lake filesystem rồi chạy với `--env demo`. Xem `docs/web-demo.md`.
 ```bash
 uv run --with huggingface_hub python scripts/demo/fetch_bundle.py
-uv run steam-rec demo --env demo --user-id 11442391 --model als
+uv run steam-rec demo --env demo --user-id 378 --model als
+```
+
+## Web demo
+Next.js + FastAPI quanh `Demo` (đọc bundle trong `data/lake`, không cần Spark). Chạy: xem `web/README.md`.
+```bash
+uv run --group web uvicorn main:app --app-dir web/backend --port 8000   # backend
+cd web/frontend && npm install && npm run dev                           # frontend, cần .env.local
 ```
 
 ## Tests
 ```bash
 uv run pytest                    # unit (gồm Spark local: split không leakage, k-core, metrics, top-K mask)
 uv run pytest -m integration -o addopts=""   # cần SILO đang chạy (boto3 + s3a)
-uv run ruff check src scripts tests
+uv run ruff check src scripts tests web/backend
+uv run --group web pytest tests/unit/test_web_backend.py   # backend web (lake giả)
 ```
 
 ## Checklist nghiệm thu MVP

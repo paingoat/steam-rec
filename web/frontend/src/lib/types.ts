@@ -16,7 +16,7 @@ export interface RecItem {
 }
 
 export interface RecResult {
-  mode: string; // "precomputed:als", "fallback:popularity (...)", "cold-start:tags", ...
+  mode: string; // "precomputed:als", "fallback:popularity (no history)" / "(history-masked)", "cold-start:tags", ...
   items: RecItem[];
   user_id?: number;
   run_id?: string;

@@ -3,13 +3,12 @@
 import Link from "next/link";
 import { useActionState, useRef } from "react";
 import { login, type LoginState } from "@/app/actions";
-import { SAMPLE_USERS } from "@/lib/api";
 
 // Nút phẳng xanh, chữ xanh nhạt như nút "Sign in" / "Join Steam"
 const btn =
   "inline-block rounded-[2px] bg-[#214b6b] px-4 py-[7px] text-[15px] text-[#67c1f5] hover:bg-[#3a8ac4] hover:text-white disabled:opacity-60";
 
-export function LoginForm() {
+export function LoginForm({ sampleUsers }: { sampleUsers: number[] }) {
   const [state, action, pending] = useActionState<LoginState, FormData>(login, {});
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -52,7 +51,7 @@ export function LoginForm() {
           recommendations right away without signing in.
         </p>
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {SAMPLE_USERS.map((id) => (
+          {sampleUsers.map((id) => (
             <button
               key={id}
               type="button"
