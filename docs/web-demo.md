@@ -28,6 +28,9 @@ Luôn truyền `--env demo`. Nếu thiếu, env mặc định là `local`, sẽ 
 Khi có run mới trên HF, chạy lại `fetch_bundle.py`. `Demo` tự chọn run full mới nhất có trong lake; muốn cố định run
 thì truyền `run_id`.
 
+> **Windows:** cần đặt `PYTHONUTF8=1` trước mọi lệnh trên, và CLI phải có `--run-id <run_id>`. Nguyên nhân và cách
+> tránh xem mục "Known issues on Windows" trong `web/README.md`.
+
 ## Dùng demo trong web
 
 Gọi `Demo` như một thư viện. Không gọi CLI qua subprocess, và **khởi tạo một lần khi app start** (lần đầu sẽ copy
