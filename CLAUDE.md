@@ -23,6 +23,11 @@ dữ liệu cuối cùng, cấu hình và demo; Google Colab chỉ là compute t
 - Auth: ở v0.7.5 mặc định là `--auth=oauth2` (README/skill nói `adc`, nhưng `colab --help` của bản cài là `oauth2`).
   Token được cache tại `~/.config/colab-cli/token.json`, nằm ngoài repo. Kiểm tra bằng `colab whoami` / `colab sessions`.
   Lần đăng nhập đầu là flow copy-paste mã trong trình duyệt, nên người dùng phải tự làm; agent không chạy được.
+- **Nhiều tài khoản:** máy có nhiều tài khoản Colab; chạy CLI qua wrapper `colab-as <profile> <lệnh>` (mỗi profile một HOME
+  riêng, `colab-as ls`, `colab-as all usage`). **Hỏi người dùng dùng tài khoản nào** trước khi tạo VM/tiêu CU; dùng cùng
+  một profile cho cả vòng đời session (`new`/`exec`/`stop`). Plan v2 (2026-11-25) dùng profile `khai`, session `steam-rec-v2`.
+- **Mạng local là 4G:** tránh kéo file nặng về local; **hỏi trước khi tải về bất kỳ file/tập > 100 MB** (Colab download,
+  HF, dataset…). Ưu tiên xử lý dữ liệu lớn trên VM và chỉ mang về output gọn.
 - Không bao giờ lưu credentials vào repo: không có token, `kaggle.json`, `.env`, service-account JSON, và không nhúng PAT
   vào notebook/script. `colab auth` và `colab drivemount` là thao tác tương tác, nên **để người dùng tự chạy**.
 
