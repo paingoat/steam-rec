@@ -5,11 +5,13 @@
 
 ## Tình hình hiện tại (2026-11-22)
 
-- Đã có một run full chạy trên Colab: `20261111T030116Z-3ef4284-e0820c90` (ALS rank 32, CB TF-IDF, popularity).
+- Run full mới nhất (v2, 2026-11-25): `20261125T045027Z-dbf308a-v2full`. Run này dùng split theo mốc thời gian chung, metadata
+  đã bổ sung (tags cho các game lớn như TF2, Witcher 3…), và gồm 3 model ALS rank 32, CB TF-IDF, popularity.
+  Run v1 cũ `20261111T030116Z-3ef4284-e0820c90` vẫn còn trên HF.
   Metrics xem ở `reports/benchmark.md`.
 - Git chỉ chứa code, config và report. **Dữ liệu không nằm trong git** (`data/` đã gitignore):
   - Silver/Gold full và checkpoint nằm trên Google Drive của chủ dự án. Web **không cần** phần này.
-  - Những gì demo cần (top-K precomputed, catalog, model nhỏ cho cold-start) nằm trong một bundle khoảng 65 MB trên
+  - Những gì demo cần (top-K precomputed, catalog, model nhỏ cho cold-start) nằm trong một bundle trên (v2 khoảng 113 MB, v1 khoảng 65 MB)
     HF Hub, ở dataset **public** `paingoat/steam-rec-demo`, thư mục `bundles/<run_id>/`. Bundle gồm các tar part và
     `bundle_manifest.json` (SHA-256), đúng định dạng mà pipeline export ra.
 - Môi trường `demo` (`configs/demo.yaml`) dùng lake là thư mục `data/lake/` nên **không cần MinIO/SILO, Spark, Colab
@@ -20,7 +22,7 @@
 ```bash
 uv sync                                   # Python 3.13, giống pipeline
 uv run --with huggingface_hub python scripts/demo/fetch_bundle.py        # tải run mới nhất (không cần token) -> verify SHA-256 -> data/lake
-uv run steam-rec demo --env demo --user-id 11442391 --model als          # kiểm tra nhanh
+uv run steam-rec demo --env demo --user-id 378 --model als               # kiểm tra nhanh (user có top-K ở run v2)
 uv run steam-rec demo --env demo --tags "RPG,Open World" -k 5            # cold-start theo tag
 ```
 
@@ -41,7 +43,7 @@ from steam_rec.storage.store import get_store
 cfg = load_config("demo")
 demo = Demo(cfg, get_store(cfg), run_id=None, k=10)   # k cố định theo instance
 
-demo.for_user(11442391, model="als")      # model: "als" | "cb" | "popularity"; mỗi lần gọi ~40 ms
+demo.for_user(378, model="als")           # model: "als" | "cb" | "popularity"; mỗi lần gọi ~40 ms
 demo.for_user(123, exclude_app_ids=[730, 570])  # user lạ: fallback popularity bỏ các game user đã review
 demo.for_new_user(["RPG", "Open World"])  # cold-start theo tag
 ```
@@ -61,7 +63,7 @@ Top-K precomputed đã tự mask toàn bộ lịch sử của user trong dataset
 của họ, nên web cần truyền `exclude_app_ids` để fallback không gợi ý lại game đã review. CLI: `--exclude 730,570`.
 
 Dữ liệu tham chiếu có sẵn trên object (chỉ đọc):
-- `demo.known`: tập 102 000 `user_id` có top-K precomputed (dùng để gợi ý user mẫu hoặc autocomplete). Ví dụ: `511`, `615`, `731`, `11442391`.
+- `demo.known`: tập `user_id` có top-K precomputed (run v2: 180 362 user; run v1: 102 000), dùng để gợi ý user mẫu hoặc autocomplete. Ví dụ với run v2: `378`, `671`, `694`, `856`.
 - `demo.catalog`: DataFrame 32 692 game, index `item_idx`, các cột `app_id, title, rating, positive_ratio, price_final, tags`.
 - `demo.tag_vocab`: 441 tag đã chuẩn hóa (lowercase, `_` thay cho space/`-`), dùng cho UI chọn tag.
 - Ảnh game: dùng URL công khai của Steam theo `app_id`, ví dụ

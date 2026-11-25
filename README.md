@@ -2,22 +2,26 @@
 
 Batch ELT + recommender trên dataset Kaggle **Game Recommendations on Steam v28**
 (41.2M review, 14.3M user, 50.9k game). Kiến trúc lake Bronze → Silver → Gold trên **PGSTY SILO** (S3, local).
-Spark xử lý trên local (smoke/dev) hoặc trên một VM **Colab** (full). Có 3 model: popularity, implicit ALS
+Spark trên dữ liệu thật chạy trên một VM **Colab** CPU high-mem (`colab-as <profile>`); máy local chỉ chạy code + unit test. Có 3 model: popularity, implicit ALS
 (Spark MLlib) và CB TF-IDF + item-kNN. Demo chạy offline, không cần Colab.
 
-- Kế hoạch và quyết định: `.claude/plans/MVP-BATCH-IMPLEMENTATION-PLAN.md` (local, không push)
+- Kế hoạch và quyết định: `.claude/plans/` (local, không push) · Nghiên cứu Iceberg: `docs/research-iceberg.md`
 - Data contracts: `docs/data-contracts.md` · EDA: `reports/eda.md` · Benchmark: `reports/benchmark.md`
 - Vận hành Colab: `docs/runbook-colab.md` + `CLAUDE.md` + skill `.claude/skills/colab-operator/`
 - Làm web trên demo (tạm thời): `docs/web-demo.md`
 
-## Kết quả (full data, test, 100k user)
+## Kết quả v2 (full data, test, 100k user)
+Split dùng mốc thời gian chung: train < 2022-09-01 ≤ val < 2022-11-01 ≤ test. K-core 3/5 chỉ chạy trên train; mỗi user
+có nhiều target. Metadata được bổ sung từ HF FronkonGames và SteamSpy. Run: `20261125T045027Z-dbf308a-v2full`.
+
 | model | Recall@20 | NDCG@20 | catalog coverage@20 | eligible users |
 |---|---|---|---|---|
-| popularity | 0.0633 | 0.0242 | 0.1% | 100% |
-| **ALS** (rank 32, α=5) | **0.1091** | **0.0460** | 2.5% | 100% |
-| CB TF-IDF (tags + desc) | 0.0133 | 0.0068 | 79% | 72% |
+| popularity | 0.0565 | 0.0234 | 0.2% | 100% |
+| **ALS** (rank 32, α=5, fit 1 lần trên train) | **0.1243** | **0.0552** | 2.6% | 100% |
+| CB TF-IDF (tags + genres/categories + desc) | 0.0440 | 0.0196 | 66% | 100% |
 
-Chi tiết và các lưu ý (metadata của game phổ biến bị rỗng, grid sửa giữa chừng) ở `reports/benchmark.md`.
+Kết quả v1 (leave-last-out theo từng user, đã bỏ vì rò rỉ thời gian giữa các user) và các lưu ý xem ở
+`reports/benchmark.md`. Hai bộ số **không so sánh trực tiếp** với nhau.
 
 ## Cài đặt local
 ```bash
@@ -68,7 +72,7 @@ uv run ruff check src scripts tests
 ## Checklist nghiệm thu MVP
 - [x] Bronze bất biến + manifest SHA-256; ingest chạy lại là no-op; Bronze trên Colab khớp SHA-256 với Bronze local
 - [x] Silver/Gold có DQ report (`artifacts/<run>/dq/`), partition theo năm, không partition theo user_id
-- [x] Split theo thời gian cho từng user (leave-last-out), có test chứng minh không leakage; mask = tương tác trước target
+- [x] Split theo mốc thời gian chung (v2) + k-core chỉ trên train, có test chứng minh không leakage giữa các user; mask = tương tác trước mốc
 - [x] Popularity / ALS / CB có Recall@K, NDCG@K, coverage (K=10, 20) trên cùng tập eval; test chạy một lần
 - [x] Top-K và model phục vụ đã import vào SILO, verify SHA-256, restore test đạt
 - [x] Demo offline chạy khi không có session Colab nào
