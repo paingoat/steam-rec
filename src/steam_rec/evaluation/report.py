@@ -35,7 +35,7 @@ def render(runs: list[dict], k: int = 20) -> str:
         sp, ev = g.get("split", {}), g.get("eval", {})
         out.append(f"| `{r['run_id']}` | {r['run'].get('execution', '?')} | {r['run'].get('scale', '?')} | "
                    f"{sp.get('users', '?'):,} | {sp.get('items', '?'):,} | {sp.get('n_train', '?'):,} | "
-                   f"{ev.get('eval_users', '?'):,} | "
+                   f"{ev.get('test_eval_users', ev.get('eval_users', '?')):,} | "
                    + " | ".join(str((st.get(s) or {}).get("elapsed_s", "—")) for s in STAGES) + " |")
     for r in runs:
         if not r["test"]:
@@ -43,7 +43,10 @@ def render(runs: list[dict], k: int = 20) -> str:
         sel = r["test"].get("_selection", {})
         out += ["", f"## Test metrics — `{r['run_id']}` ({r['run'].get('scale')})", "",
                 (f"Cấu hình chọn trên validation ({sel.get('primary_metric')}): ALS `{sel.get('als')}`, "
-                 f"CB `{sel.get('cb')}`. Test chỉ chạy **một lần**."), "",
+                 f"CB `{sel.get('cb')}`. Test chỉ chạy **một lần**."
+                 + (f" Split theo mốc chung: train < {sd['t_val']} ≤ val < {sd['t_test']} ≤ test; nhiều target/user."
+                    if (sd := ((r['stages'].get('gold') or {}).get('metrics', {}).get('split_dates'))) else
+                    " Split v1: leave-last-out theo từng user (1 target/user).")), "",
                 "| model | Recall@10 | NDCG@10 | Recall@20 | NDCG@20 | catalog cov@20 | eligible users@20 |",
                 "|---|---|---|---|---|---|---|"]
         for m in MODELS:

@@ -10,19 +10,27 @@ from steam_rec.models.scoring import _topk_rows
 
 def test_recall_ndcg_reference():
     recs = [5, 3, 9]
-    assert recall_at_k(recs, 3, 2) == 1.0 and recall_at_k(recs, 9, 2) == 0.0
-    assert math.isclose(ndcg_at_k(recs, 5, 3), 1.0)
-    assert math.isclose(ndcg_at_k(recs, 9, 3), 1 / math.log2(4))
+    assert recall_at_k(recs, [3], 2) == 1.0 and recall_at_k(recs, [9], 2) == 0.0
+    assert math.isclose(ndcg_at_k(recs, [5], 3), 1.0)
+    assert math.isclose(ndcg_at_k(recs, [9], 3), 1 / math.log2(4))
+    # several targets: recall normalised by min(K, |rel|); ideal DCG over min(K, |rel|) positions
+    assert math.isclose(recall_at_k(recs, [5, 9, 42], 2), 1 / 2)
+    assert math.isclose(recall_at_k(recs, [5, 9], 3), 1.0)
+    assert math.isclose(ndcg_at_k(recs, [5, 9], 3), (1 + 1 / math.log2(4)) / (1 + 1 / math.log2(3)))
 
 
 def test_spark_metrics_match_reference(spark):
-    rows = [(0, [5, 3, 9], 3), (1, [1, 2, 4], 7), (2, [7], 7)]
-    df = spark.createDataFrame(rows, "user_idx int, items array<int>, t int")
+    rows = [(0, [5, 3, 9], [3]), (1, [1, 2, 4], [7]), (2, [7], [7]), (3, [5, 3, 9], [5, 9, 42]), (4, [], [1])]
+    df = spark.createDataFrame(rows, "user_idx int, items array<int>, t array<int>")
     m = spark_metrics(df, "t", [2, 3], n_items=10)
-    assert math.isclose(m["recall@2"], 2 / 3, rel_tol=1e-5)
-    assert math.isclose(m["ndcg@3"], (1 / math.log2(3) + 0 + 1) / 3, rel_tol=1e-5)
-    assert math.isclose(m["eligible_user_coverage@3"], 2 / 3, rel_tol=1e-5)
+    for k in (2, 3):
+        exp_r = sum(recall_at_k(r, t, k) for _, r, t in rows) / len(rows)
+        exp_n = sum(ndcg_at_k(r, t, k) for _, r, t in rows) / len(rows)
+        assert math.isclose(m[f"recall@{k}"], exp_r, rel_tol=1e-5), k
+        assert math.isclose(m[f"ndcg@{k}"], exp_n, rel_tol=1e-5), k
+    assert math.isclose(m["eligible_user_coverage@3"], 3 / 5, rel_tol=1e-5)
     assert math.isclose(m["catalog_coverage@2"], 5 / 10)  # {5,3,1,2,7}
+    assert math.isclose(m["targets_per_user"], 7 / 5, rel_tol=1e-5)
 
 
 def test_topk_masks_seen_and_orders():
