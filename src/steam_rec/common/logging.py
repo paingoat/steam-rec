@@ -18,8 +18,10 @@ def setup_logging(level: str = "INFO") -> None:
 
 
 def peak_rss_mb() -> float:
-    import resource
-
+    try:
+        import resource  # Unix only
+    except ImportError:
+        return 0.0
     return round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024, 1)
 
 

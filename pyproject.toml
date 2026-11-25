@@ -15,6 +15,7 @@ dependencies = [
   "pyarrow>=18",
   "pandas>=2.2",
   "matplotlib>=3.9",
+  "duckdb>=2.0.1",
 ]
 
 [project.scripts]
@@ -22,6 +23,11 @@ steam-rec = "steam_rec.cli:app"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.8"]
+web = [
+    "fastapi>=0.165.0",
+    "httpx>=0.28.1",
+    "uvicorn[standard]>=0.54.0",
+]
 
 [build-system]
 requires = ["hatchling"]

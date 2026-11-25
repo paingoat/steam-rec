@@ -1,8 +1,13 @@
 # Runbook — Colab CLI (M5/M6)
 
 Áp dụng `CLAUDE.md` (9 quy tắc vận hành) và skill `.claude/skills/colab-operator/`.
-Session mặc định: `steam-rec-mvp`. Drive: `/content/drive/MyDrive/Research/steam-rec/<run_id>/`.
+Session mặc định: `steam-rec-mvp` (run v1). Run v2 (2026-11-25): profile `khai`, session `steam-rec-v2`.
+Drive: `/content/drive/MyDrive/Research/steam-rec/<run_id>/`.
 👤 = bước người dùng phải tự làm.
+
+> **Nhiều tài khoản:** mọi lệnh `colab …` dưới đây chạy qua wrapper `colab-as <profile> …`
+> (ví dụ `colab-as khai new -s steam-rec-v2 --high-mem`). Hỏi người dùng chọn profile trước khi tiêu CU,
+> và giữ nguyên profile cho cả vòng đời session. Mạng local là 4G: hỏi trước khi `download` > 100 MB.
 
 ## 0. Kiểm tra (read-only, không tốn CU)
 ```bash

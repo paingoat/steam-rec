@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+/* Bảng màu lấy theo bộ thiết kế "Steam Redesign (Community)" */
+:root {
+  --bg: #1b2232;
+  --bg-deep: #141a26;
+  --surface: #232b3d;
+  --surface-2: #2b3449;
+  --nav: #232a3d;
+  --topbar: #171d29;
+  --input: #1a2030;
+  --border: #323c55;
+  --text: #e6ebf5;
+  --muted: #8f9bb3;
+  --accent: #4f6bb0;
+  --accent-hover: #5d7bc6;
+  --link: #66a8e8;
+  --positive: #a4d007;
+  --negative: #d9534f;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-deep: var(--bg-deep);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-nav: var(--nav);
+  --color-topbar: var(--topbar);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-link: var(--link);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+  color: var(--text);
+}

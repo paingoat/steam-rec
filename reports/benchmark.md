@@ -9,10 +9,11 @@ Spark `local[*]` trên **một máy** (đa nhân, không phải cluster). Thời
 | `20261111T023229Z-8c56833-dirty-bcadc979` | local | smoke | 7,061 | 1,912 | 31,991 | 5,000 | 99.8 | 7.1 | 20.0 | 3.7 | 6.7 |
 | `20261111T023559Z-7b0b390-33e337bc` | local | dev | 78,680 | 7,439 | 393,481 | 20,000 | 113.2 | 19.5 | 135.8 | 19.7 | 8.0 |
 | `20261111T030116Z-3ef4284-e0820c90` | colab | full | 3,303,525 | 32,692 | 17,081,075 | 100,000 | 181.7 | 165.9 | 1331.2 | 49.7 | 27.6 |
+| `20261125T045027Z-dbf308a-v2full` | colab | full | 3,001,426 | 30,715 | 21,358,504 | 100,000 | 204.0 | 162.8 | 1274.7 | 53.5 | 36.3 |
 
 ## Test metrics — `20261111T023229Z-8c56833-dirty-bcadc979` (smoke)
 
-Cấu hình chọn trên validation (ndcg@20): ALS `{'rank': 16, 'regParam': 0.1, 'alpha': 10.0, 'maxIter': 5}`, CB `{'w_tag': 1.0, 'w_desc': 0.3, 'neighbors': 100}`. Test chỉ chạy **một lần**.
+Cấu hình chọn trên validation (ndcg@20): ALS `{'rank': 16, 'regParam': 0.1, 'alpha': 10.0, 'maxIter': 5}`, CB `{'w_tag': 1.0, 'w_desc': 0.3, 'neighbors': 100}`. Test chỉ chạy **một lần**. Split v1: leave-last-out theo từng user (1 target/user).
 
 | model | Recall@10 | NDCG@10 | Recall@20 | NDCG@20 | catalog cov@20 | eligible users@20 |
 |---|---|---|---|---|---|---|
@@ -32,7 +33,7 @@ Cấu hình chọn trên validation (ndcg@20): ALS `{'rank': 16, 'regParam': 0.1
 
 ## Test metrics — `20261111T023559Z-7b0b390-33e337bc` (dev)
 
-Cấu hình chọn trên validation (ndcg@20): ALS `{'rank': 64, 'regParam': 0.1, 'alpha': 10.0, 'maxIter': 10}`, CB `{'w_tag': 1.0, 'w_desc': 1.0, 'neighbors': 100}`. Test chỉ chạy **một lần**.
+Cấu hình chọn trên validation (ndcg@20): ALS `{'rank': 64, 'regParam': 0.1, 'alpha': 10.0, 'maxIter': 10}`, CB `{'w_tag': 1.0, 'w_desc': 1.0, 'neighbors': 100}`. Test chỉ chạy **một lần**. Split v1: leave-last-out theo từng user (1 target/user).
 
 | model | Recall@10 | NDCG@10 | Recall@20 | NDCG@20 | catalog cov@20 | eligible users@20 |
 |---|---|---|---|---|---|---|
@@ -57,7 +58,7 @@ Cấu hình chọn trên validation (ndcg@20): ALS `{'rank': 64, 'regParam': 0.1
 
 ## Test metrics — `20261111T030116Z-3ef4284-e0820c90` (full)
 
-Cấu hình chọn trên validation (ndcg@20): ALS `{'rank': 32, 'regParam': 0.1, 'alpha': 5.0, 'maxIter': 10}`, CB `{'w_tag': 1.0, 'w_desc': 1.0, 'neighbors': 100}`. Test chỉ chạy **một lần**.
+Cấu hình chọn trên validation (ndcg@20): ALS `{'rank': 32, 'regParam': 0.1, 'alpha': 5.0, 'maxIter': 10}`, CB `{'w_tag': 1.0, 'w_desc': 1.0, 'neighbors': 100}`. Test chỉ chạy **một lần**. Split v1: leave-last-out theo từng user (1 target/user).
 
 | model | Recall@10 | NDCG@10 | Recall@20 | NDCG@20 | catalog cov@20 | eligible users@20 |
 |---|---|---|---|---|---|---|
@@ -77,7 +78,43 @@ Cấu hình chọn trên validation (ndcg@20): ALS `{'rank': 32, 'regParam': 0.1
 
 </details>
 
-## Ghi chú về run full (`20261111T030116Z-3ef4284-e0820c90`)
+## Test metrics — `20261125T045027Z-dbf308a-v2full` (full)
+
+Cấu hình chọn trên validation (ndcg@20): ALS `{'rank': 32, 'regParam': 0.1, 'alpha': 5.0, 'maxIter': 10}`, CB `{'w_tag': 1.0, 'w_desc': 1.0, 'neighbors': 100}`. Test chỉ chạy **một lần**. Split theo mốc chung: train < 2022-09-01 ≤ val < 2022-11-01 ≤ test; nhiều target/user.
+
+| model | Recall@10 | NDCG@10 | Recall@20 | NDCG@20 | catalog cov@20 | eligible users@20 |
+|---|---|---|---|---|---|---|
+| popularity | 0.0339 | 0.0174 | 0.0565 | 0.0234 | 0.002 | 1.000 |
+| cb | 0.0278 | 0.0153 | 0.0440 | 0.0196 | 0.657 | 1.000 |
+| als | 0.0781 | 0.0428 | 0.1243 | 0.0552 | 0.026 | 1.000 |
+
+<details><summary>Validation grid</summary>
+
+| model | params | NDCG@20 | Recall@20 |
+|---|---|---|---|
+| popularity | `{}` | 0.0309 | 0.0712 |
+| cb | `{'w_tag': 1.0, 'w_desc': 0.3, 'neighbors': 100}` | 0.0220 | 0.0480 |
+| cb | `{'w_tag': 1.0, 'w_desc': 1.0, 'neighbors': 100}` | 0.0223 | 0.0487 |
+| als | `{'rank': 32, 'regParam': 0.1, 'alpha': 5.0, 'maxIter': 10}` | 0.0639 | 0.1417 |
+
+</details>
+
+## Ghi chú về run v2 full (`20261125T045027Z-dbf308a-v2full`, 2026-11-25) — chuẩn đánh giá mới
+- **Không so sánh trực tiếp với các run v1** (leave-last-out theo từng user, 1 target/user). Run v2 dùng mốc thời gian
+  chung cho mọi user: train < 2022-09-01 ≤ val < 2022-11-01 ≤ test (61 ngày, mùa sale tháng 11–12). Lý do chọn mốc ở
+  `reports/eda_time_split.md`.
+- K-core 3/5 chạy **chỉ trên train**: còn 21.4M positive, 3.00M user, 30.7k game. Target là mọi positive trong cửa sổ, của
+  user và game thuộc train-core. Trung bình 1.46 target/user ở test. Có 23.8% target test là game lạnh (không có trong
+  train-core), nên CF không thể gợi ý được.
+- Mỗi split lấy mẫu tất định 100k user. Metric nhiều target: Recall@K chuẩn hoá theo min(K, |rel|).
+- Model **fit một lần trên train** (quyết định của chủ dự án). Test cách train 2 tháng, không có refit; refit nằm ở backlog.
+  ALS chỉ 1 cấu hình (rank 32, regParam 0.1, alpha 5), fit mất 18.8 phút trên Colab CPU high-mem 8 nhân.
+- **Metadata bổ sung** (HF FronkonGames + SteamSpy): review tích cực rơi vào game có tags tăng từ 48.8% lên **99.8%**,
+  game có mô tả tăng từ 79.6% lên 81.3%. Nhờ vậy CB trả đủ 20 gợi ý cho **100%** user (v1: 72%), và Recall@20 của CB
+  đạt 0.044 (v1: 0.013, khác split nên chỉ để tham khảo).
+- Chi phí Colab cả ngày (gồm dev, EDA, smoke, full): 0.41 CU.
+
+## Ghi chú về run v1 full (`20261111T030116Z-3ef4284-e0820c90`)
 - **Phần cứng:** Colab CPU High-RAM, 8 vCPU, 54.8 GB RAM, Spark `local[*]` (driver 38 GB). Đây là một máy đơn, **không phải cluster**.
   Chi phí của cả run (ingest + ETL + train + eval + export) là **0.56 CU** (0.26 CU/giờ).
 - **Train qua nhiều lần `exec`:** cột "train (s)" chỉ là lần `exec` cuối (fit thứ 2 + chọn model).

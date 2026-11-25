@@ -1,19 +1,19 @@
-"""Per-user temporal leave-last-out split on positives."""
+"""Global temporal split (production-style): one cut-off for every user, so no model ever sees the future of anyone.
+
+  train = date <  t_val
+  val   = t_val <= date < t_test
+  test  = date >= t_test
+(The per-user leave-last-out split of v1 was removed: it leaked other users' future interactions into training.)"""
 
 from __future__ import annotations
 
-from pyspark.sql import DataFrame, Window
+from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
 
 
-def leave_last_out(pos: DataFrame, min_pos_for_eval: int = 3, user_col: str = "user_id") -> DataFrame:
-    """Adds `split`: last positive (by date, then review_id) -> test, second-to-last -> val, rest -> train.
-    Users with < min_pos_for_eval positives keep everything in train."""
-    w = Window.partitionBy(user_col).orderBy(F.col("date").desc(), F.col("review_id").desc())
-    wn = Window.partitionBy(user_col)
-    return (
-        pos.withColumn("_rk", F.row_number().over(w)).withColumn("_n", F.count("*").over(wn))
-        .withColumn("split", F.when((F.col("_n") >= min_pos_for_eval) & (F.col("_rk") == 1), "test")
-                    .when((F.col("_n") >= min_pos_for_eval) & (F.col("_rk") == 2), "val").otherwise("train"))
-        .drop("_rk", "_n")
-    )
+def global_time_split(df: DataFrame, t_val: str, t_test: str, date_col: str = "date") -> DataFrame:
+    if not t_val < t_test:
+        raise ValueError(f"need t_val < t_test, got {t_val} / {t_test}")
+    d = F.col(date_col)
+    return df.withColumn("split", F.when(d < F.lit(t_val).cast("date"), "train")
+                         .when(d < F.lit(t_test).cast("date"), "val").otherwise("test"))

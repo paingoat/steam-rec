@@ -1,0 +1,384 @@
+{
+  "bronze_ingest_run_id": "20261125T040223Z",
+  "kcore": [
+    3,
+    5
+  ],
+  "data_end": "2022-12-31",
+  "candidates": [
+    {
+      "t_val": "2022-07-01",
+      "t_test": "2022-10-01",
+      "val_days": 92,
+      "test_days": 92,
+      "train_positives_raw": 30891586,
+      "train_positives_core": 20402979,
+      "core_users": 2881516,
+      "core_items": 29724,
+      "kcore_rounds": 6,
+      "val": {
+        "positives": 1858140,
+        "positives_of_core_users": 775674,
+        "warm_targets": 641582,
+        "cold_item_share_of_core_user_targets": 0.1729,
+        "eval_users": 370022,
+        "targets_per_user_mean": 1.734,
+        "targets_per_user_p50_p90_p99": [
+          1.0,
+          3.0,
+          10.0
+        ],
+        "share_on_games_released_in_window": 0.1783
+      },
+      "test": {
+        "positives": 2554656,
+        "positives_of_core_users": 978708,
+        "warm_targets": 700818,
+        "cold_item_share_of_core_user_targets": 0.2839,
+        "eval_users": 443484,
+        "targets_per_user_mean": 1.58,
+        "targets_per_user_p50_p90_p99": [
+          1.0,
+          3.0,
+          8.0
+        ],
+        "share_on_games_released_in_window": 0.2034
+      }
+    },
+    {
+      "t_val": "2022-09-01",
+      "t_test": "2022-11-01",
+      "val_days": 61,
+      "test_days": 61,
+      "train_positives_raw": 32191862,
+      "train_positives_core": 21358504,
+      "core_users": 3001426,
+      "core_items": 30715,
+      "kcore_rounds": 5,
+      "val": {
+        "positives": 1143341,
+        "positives_of_core_users": 498173,
+        "warm_targets": 402178,
+        "cold_item_share_of_core_user_targets": 0.1927,
+        "eval_users": 259227,
+        "targets_per_user_mean": 1.551,
+        "targets_per_user_p50_p90_p99": [
+          1.0,
+          2.0,
+          8.0
+        ],
+        "share_on_games_released_in_window": 0.1892
+      },
+      "test": {
+        "positives": 1969179,
+        "positives_of_core_users": 784292,
+        "warm_targets": 598016,
+        "cold_item_share_of_core_user_targets": 0.2375,
+        "eval_users": 411538,
+        "targets_per_user_mean": 1.453,
+        "targets_per_user_p50_p90_p99": [
+          1.0,
+          2.0,
+          7.0
+        ],
+        "share_on_games_released_in_window": 0.123
+      }
+    },
+    {
+      "t_val": "2022-10-01",
+      "t_test": "2022-11-15",
+      "val_days": 45,
+      "test_days": 47,
+      "train_positives_raw": 32749726,
+      "train_positives_core": 21770980,
+      "core_users": 3052606,
+      "core_items": 31206,
+      "kcore_rounds": 5,
+      "val": {
+        "positives": 866382,
+        "positives_of_core_users": 379983,
+        "warm_targets": 311521,
+        "cold_item_share_of_core_user_targets": 0.1802,
+        "eval_users": 212488,
+        "targets_per_user_mean": 1.466,
+        "targets_per_user_p50_p90_p99": [
+          1.0,
+          2.0,
+          7.0
+        ],
+        "share_on_games_released_in_window": 0.1828
+      },
+      "test": {
+        "positives": 1688274,
+        "positives_of_core_users": 684060,
+        "warm_targets": 549419,
+        "cold_item_share_of_core_user_targets": 0.1968,
+        "eval_users": 396175,
+        "targets_per_user_mean": 1.387,
+        "targets_per_user_p50_p90_p99": [
+          1.0,
+          2.0,
+          6.0
+        ],
+        "share_on_games_released_in_window": 0.1101
+      }
+    },
+    {
+      "t_val": "2022-11-01",
+      "t_test": "2022-12-01",
+      "val_days": 30,
+      "test_days": 31,
+      "train_positives_raw": 33335203,
+      "train_positives_core": 22206371,
+      "core_users": 3106388,
+      "core_items": 31681,
+      "kcore_rounds": 6,
+      "val": {
+        "positives": 1132940,
+        "positives_of_core_users": 488542,
+        "warm_targets": 445826,
+        "cold_item_share_of_core_user_targets": 0.0874,
+        "eval_users": 358261,
+        "targets_per_user_mean": 1.244,
+        "targets_per_user_p50_p90_p99": [
+          1.0,
+          2.0,
+          5.0
+        ],
+        "share_on_games_released_in_window": 0.0948
+      },
+      "test": {
+        "positives": 836239,
+        "positives_of_core_users": 338130,
+        "warm_targets": 279973,
+        "cold_item_share_of_core_user_targets": 0.172,
+        "eval_users": 195379,
+        "targets_per_user_mean": 1.433,
+        "targets_per_user_p50_p90_p99": [
+          1.0,
+          2.0,
+          7.0
+        ],
+        "share_on_games_released_in_window": 0.1215
+      }
+    }
+  ],
+  "monthly": [
+    {
+      "m": "2020-01",
+      "reviews": 536730,
+      "positives": 479909,
+      "users": 444066
+    },
+    {
+      "m": "2020-02",
+      "reviews": 472467,
+      "positives": 413787,
+      "users": 392141
+    },
+    {
+      "m": "2020-03",
+      "reviews": 657934,
+      "positives": 581103,
+      "users": 537893
+    },
+    {
+      "m": "2020-04",
+      "reviews": 672840,
+      "positives": 586951,
+      "users": 547302
+    },
+    {
+      "m": "2020-05",
+      "reviews": 577795,
+      "positives": 501779,
+      "users": 473671
+    },
+    {
+      "m": "2020-06",
+      "reviews": 586450,
+      "positives": 516410,
+      "users": 468915
+    },
+    {
+      "m": "2020-07",
+      "reviews": 647891,
+      "positives": 572491,
+      "users": 506726
+    },
+    {
+      "m": "2020-08",
+      "reviews": 529797,
+      "positives": 461867,
+      "users": 431940
+    },
+    {
+      "m": "2020-09",
+      "reviews": 495977,
+      "positives": 435709,
+      "users": 408558
+    },
+    {
+      "m": "2020-10",
+      "reviews": 554360,
+      "positives": 486758,
+      "users": 454114
+    },
+    {
+      "m": "2020-11",
+      "reviews": 951060,
+      "positives": 875822,
+      "users": 811808
+    },
+    {
+      "m": "2020-12",
+      "reviews": 805138,
+      "positives": 702752,
+      "users": 648688
+    },
+    {
+      "m": "2021-01",
+      "reviews": 723775,
+      "positives": 639707,
+      "users": 574820
+    },
+    {
+      "m": "2021-02",
+      "reviews": 668457,
+      "positives": 590835,
+      "users": 543189
+    },
+    {
+      "m": "2021-03",
+      "reviews": 638256,
+      "positives": 557059,
+      "users": 516335
+    },
+    {
+      "m": "2021-04",
+      "reviews": 646610,
+      "positives": 559084,
+      "users": 527904
+    },
+    {
+      "m": "2021-05",
+      "reviews": 658741,
+      "positives": 570284,
+      "users": 526362
+    },
+    {
+      "m": "2021-06",
+      "reviews": 682166,
+      "positives": 593460,
+      "users": 546408
+    },
+    {
+      "m": "2021-07",
+      "reviews": 744756,
+      "positives": 649556,
+      "users": 589310
+    },
+    {
+      "m": "2021-08",
+      "reviews": 698262,
+      "positives": 599675,
+      "users": 561294
+    },
+    {
+      "m": "2021-09",
+      "reviews": 648173,
+      "positives": 552778,
+      "users": 530712
+    },
+    {
+      "m": "2021-10",
+      "reviews": 661882,
+      "positives": 569871,
+      "users": 542945
+    },
+    {
+      "m": "2021-11",
+      "reviews": 1185050,
+      "positives": 1043345,
+      "users": 1008330
+    },
+    {
+      "m": "2021-12",
+      "reviews": 846720,
+      "positives": 721980,
+      "users": 678848
+    },
+    {
+      "m": "2022-01",
+      "reviews": 875343,
+      "positives": 763560,
+      "users": 690740
+    },
+    {
+      "m": "2022-02",
+      "reviews": 820793,
+      "positives": 696863,
+      "users": 675965
+    },
+    {
+      "m": "2022-03",
+      "reviews": 679063,
+      "positives": 580767,
+      "users": 555548
+    },
+    {
+      "m": "2022-04",
+      "reviews": 652936,
+      "positives": 532729,
+      "users": 533412
+    },
+    {
+      "m": "2022-05",
+      "reviews": 656863,
+      "positives": 554873,
+      "users": 532275
+    },
+    {
+      "m": "2022-06",
+      "reviews": 697572,
+      "positives": 598051,
+      "users": 555788
+    },
+    {
+      "m": "2022-07",
+      "reviews": 807512,
+      "positives": 684542,
+      "users": 639874
+    },
+    {
+      "m": "2022-08",
+      "reviews": 716011,
+      "positives": 615734,
+      "users": 576710
+    },
+    {
+      "m": "2022-09",
+      "reviews": 669102,
+      "positives": 557864,
+      "users": 544757
+    },
+    {
+      "m": "2022-10",
+      "reviews": 729496,
+      "positives": 585477,
+      "users": 596885
+    },
+    {
+      "m": "2022-11",
+      "reviews": 1282247,
+      "positives": 1132940,
+      "users": 1093708
+    },
+    {
+      "m": "2022-12",
+      "reviews": 1002583,
+      "positives": 836239,
+      "users": 796076
+    }
+  ]
+}

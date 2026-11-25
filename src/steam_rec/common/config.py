@@ -49,8 +49,14 @@ class EvalCfg(BaseModel):
     max_eval_users: int = 100_000
 
 
+class SplitCfg(BaseModel):
+    """Global temporal cut-offs (ISO dates). Chosen by the owner from reports/eda_time_split.md."""
+    t_val: str | None = None
+    t_test: str | None = None
+
+
 class GoldCfg(BaseModel):
-    min_user_pos: int = 3
+    min_user_pos: int = 3  # k-core on TRAIN positives only
     min_item_pos: int = 5
     kcore_max_rounds: int = 8
     negatives: Literal["mask", "drop"] = "mask"
@@ -64,6 +70,7 @@ class Config(BaseModel):
     spark: SparkCfg = SparkCfg()
     scale: ScaleCfg = ScaleCfg()
     eval: EvalCfg = EvalCfg()
+    split: SplitCfg = SplitCfg()
     gold: GoldCfg = GoldCfg()
     model: dict[str, Any] = Field(default_factory=dict)
 
@@ -84,7 +91,7 @@ def deep_merge(a: dict, b: dict) -> dict:
 
 
 def _read(path: Path) -> dict:
-    return yaml.safe_load(path.read_text()) or {} if path.exists() else {}
+    return yaml.safe_load(path.read_text(encoding="utf-8")) or {} if path.exists() else {}
 
 
 def load_config(env: str = "local", scale: str = "smoke", overrides: dict | None = None,
@@ -105,7 +112,7 @@ def load_dotenv(path: Path | None = None) -> None:
     path = path or REPO_ROOT / ".env"
     if not path.exists():
         return
-    for line in path.read_text().splitlines():
+    for line in path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if line and not line.startswith("#") and "=" in line:
             k, v = line.split("=", 1)

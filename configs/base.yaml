@@ -27,7 +27,11 @@ eval:
   k_values: [10, 20]
   max_eval_users: 100000
 
-gold:                     # approved at Gate 2 (2026-11-11)
+split:                    # global temporal split, chosen by the owner 2026-11-25 (reports/eda_time_split.md, option B)
+  t_val: "2022-09-01"     # train < t_val <= val < t_test <= test
+  t_test: "2022-11-01"
+
+gold:                     # approved at Gate 2 (2026-11-11); k-core runs on TRAIN only since v2
   min_user_pos: 3
   min_item_pos: 5
   kcore_max_rounds: 8

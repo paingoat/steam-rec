@@ -29,41 +29,46 @@ Header của cả 3 file CSV khớp đúng `steam_rec.common.schemas`. Không c�
 ### Định nghĩa feedback (đề xuất)
 - **Positive** = `is_recommended = true` (85.8% số review).
 - **Confidence** = `1 + log1p(hours)`. Nguồn đã cap hours ở 1000, nên không cần cap thêm. `alpha` của ALS được tune riêng.
+- **Giả định về `hours` (chốt 2026-11-25):** coi `hours` là số giờ chơi **tại thời điểm viết review** và dùng như tín hiệu tin cậy.
+  Caveat đã biết: khoảng 2% review có `hours` > 24 giờ × số ngày từ ngày phát hành, tức một phần dữ liệu giống giờ chơi lúc crawl.
+  Sẽ xem lại khi có `playtime_at_review` từ Steam API (backlog).
 - **Negative review** không đưa vào ALS (implicit ALS không mô hình hóa được "ghét"). Chúng vẫn được giữ để:
   (a) mask khỏi candidate (không gợi ý lại game user đã review), (b) phân tích riêng.
   Ablation qua config: `negatives: mask | drop`.
 - Review chỉ là một lát cắt hành vi: user review một game không có nghĩa là toàn bộ thư viện game của họ.
   Vì vậy metric đo khả năng dự đoán *review tích cực tiếp theo*, không đo "game sẽ chơi".
 
-### Split (đề xuất): theo thời gian, leave-last-out cho từng user, chỉ tính trên positive
-- Sắp positive của mỗi user theo (`date`, `review_id`). Positive cuối → **test**, kế cuối → **validation**, còn lại → **train**.
-- Chỉ user có **≥ 3 positive** mới vào eval (EDA: khoảng 3.30M user). User có < 3 positive thì toàn bộ vào train
-  và được dùng cho popularity, item stats và CB item features.
-- 4.3% user có 2 positive cuối cùng ngày, nên thứ tự giữa chúng do `review_id` quyết định (hợp lệ, ghi chú lại).
-- **Chống leakage:** popularity, k-core, IDF và user profile **chỉ tính trên train**. Có test tự động kiểm tra
-  `max(train.date) ≤ date(val) ≤ date(test)` cho từng user.
-
-### Lọc k-core trên train positive (đề xuất)
-| cấu hình | users | items | interactions | ALS factors rank 64 |
-|---|---|---|---|---|
-| (user ≥ 1, item ≥ 1) | 12.66M | 37.4k | 35.3M | 3.25 GB |
-| **(user ≥ 3, item ≥ 5) — đề xuất mặc định** | 3.30M | 32.7k | 23.7M | 0.85 GB |
-| (5, 10) — ablation | 1.62M | 26.1k | 18.0M | 0.42 GB |
-| (10, 20) | 0.54M | 17.9k | 11.0M | 0.14 GB |
-
-Ngưỡng là config (`gold.min_user_pos`, `gold.min_item_pos`). Bảng này đo trên toàn bộ positive (trước split),
-nên chỉ dùng để định hướng. Gold sẽ tính lại trên train.
+### Split (v2, 2026-11-25): mốc thời gian chung cho mọi user
+Thay cho leave-last-out theo từng user ở v1. Leave-last-out làm rò rỉ thời gian giữa các user: model học review
+"tương lai" của user khác.
+- Chỉ tính trên positive. **train** = `date < split.t_val`; **val** = `[t_val, t_test)`; **test** = `date ≥ t_test`.
+  Hai mốc là config `split.t_val` / `split.t_test`, do chủ dự án chọn từ `reports/eda_time_split.md`.
+- **K-core (`gold.min_user_pos=3`, `gold.min_item_pos=5`) chỉ chạy trên train.** Id map của user/item lấy từ train-core.
+- Target val/test là **mọi** positive trong cửa sổ, của user thuộc train-core, trên item thuộc train-core (warm).
+  Số positive bị loại vì user hoặc item lạnh được ghi trong `stages/gold.json` (`metrics.kcore`).
+- Eval user: mỗi split lấy mẫu tất định (hash theo seed), tối đa `eval.max_eval_users` user, dùng chung cho mọi model.
+- **Mask** khi chấm một cửa sổ: mọi review (cả negative) có `date < cutoff` của cửa sổ đó.
+  **Input** của model là lịch sử train. Model **fit một lần trên train**, nên khi test sẽ không dùng các tương tác
+  trong cửa sổ val làm input; refit để ở backlog.
+- **Chống leakage:** popularity, k-core, id map và ALS chỉ dùng train (`date < t_val`). IDF của CB chỉ dùng metadata.
+  Có test cho trường hợp cắt chung cho mọi user (`tests/unit/test_splits_kcore.py`).
 
 ### Bảng Gold
+Tên bảng và cột dưới đây khớp với code (`src/steam_rec/pipelines/gold.py`, `pipelines/modeling.py`).
+
 | Bảng | Cột |
 |---|---|
 | `id_map_users` / `id_map_items` | `user_id`/`app_id` → `user_idx`/`item_idx` INT liên tục (ALS yêu cầu INT) |
-| `interactions` | user_idx, item_idx, user_id, app_id, date, review_id, is_recommended, hours, confidence, split ∈ {train, val, test} |
-| `seen` | user_idx, item_idx: mọi review, kể cả negative và kể cả train/val, dùng để mask candidate |
-| `cb_game_features` | item_idx, app_id, features (SparseVector, L2-normalized): TF-IDF của tags (w_tag) ⊕ description (w_desc) |
-| `eval_users` | user_idx, sample tất định (seed) tối đa `eval.max_eval_users`, dùng chung cho mọi model |
-| `recommendations_topk` | user_id, app_id, rank, score, model, run_id (+ title, tags khi xuất demo) |
+| `interactions` | user_idx, item_idx, user_id, app_id, date, review_id, hours, confidence, split ∈ {train, val, test} (chỉ positive) |
+| `history` | user_idx, item_idx, date, review_id, is_recommended: mọi review (cả negative khi `negatives: mask`) trên user/item của id map; chỉ dùng để mask candidate theo thời điểm |
+| `eval_targets` | user_idx, split ∈ {val, test}, items array<int> (mọi target warm trong cửa sổ), cutoff_date; sample tất định theo seed, tối đa `eval.max_eval_users`/split |
+| `demo_users` | user_idx: user ngoài eval được precompute top-K cho demo |
+| `artifacts/<run_id>/topk` | user_id, app_id, rank, score, model, run_id (kèm `catalog`, `topk_users` cho demo) |
 
-### Metric
-Recall@K và NDCG@K (K = 10, 20) với 1 item test cho mỗi user, catalog coverage@K, và eligible-user coverage
-(tỉ lệ eval user mà model trả về đủ K gợi ý). Tune trên **validation**. Chạy test **một lần** cho cấu hình cuối.
+Vector CB (TF-IDF tags ⊕ description) không lưu thành bảng Gold. Chúng được tính trong stage train và lưu ở
+`artifacts/<run_id>/models/` (`cb_item_knn.npz`, `cb_x_tag.npz`, `cb_tag_idf.npy`, `cb_tag_vocab.json`).
+
+### Metric (v2)
+Mỗi user có nhiều target. Recall@K = |top-K ∩ rel| / min(K, |rel|).
+NDCG@K có IDCG tính trên min(K, |rel|) vị trí. Ngoài ra có catalog coverage@K và eligible-user coverage@K.
+Tune trên val, chạy test **một lần**.

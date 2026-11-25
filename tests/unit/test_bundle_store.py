@@ -47,3 +47,10 @@ def test_import_bundle_into_store(tmp_path):
     res = import_bundle(tmp_path / "out", store)
     assert res["files"] == 2
     assert store.exists("artifacts/r1/a.bin") and store.exists("artifacts/r1/_IMPORTED.json")
+
+
+def test_local_store_text_is_utf8(tmp_path):
+    s = LocalStore(tmp_path / "lake")
+    s.put_text("a/b/note.txt", "tiếng Việt")
+    assert (tmp_path / "lake" / "a" / "b" / "note.txt").read_bytes() == "tiếng Việt".encode()
+    assert s.get_text("a/b/note.txt") == "tiếng Việt"
